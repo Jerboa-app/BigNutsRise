@@ -1,0 +1,6 @@
+*.pdf
+include/SFML-2.5.1/*
+CMakeFiles/*
+cmake_install.cmake
+Makefile
+CMakeCache.txt

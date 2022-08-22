@@ -9,7 +9,7 @@ public:
 
   Slider(float x, float y, float w, float h, std::string l)
   : xPosition(x), yPosition(y), width(w), height(h),
-  position(0.0), label(l)
+  position(0.0), label(l), dragging(false)
   {
     initialiseGL();
   }

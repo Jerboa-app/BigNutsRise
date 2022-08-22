@@ -44,6 +44,21 @@ double renderDeltas[60];
 
 float speed = 1.0;
 
+void speedPopUp(Popup & popups){
+  popups.clear("speed");
+  std::string pos = fixedLengthNumber(std::ceil(100.0*speed),3);
+  popups.post(
+    FadingText(
+      "Speed: "+pos+" %",
+      3.0,
+      resX-256.,
+      resY-64*6,
+      glm::vec3(0.0,0.0,0.0),
+      "speed"
+    )
+  );
+}
+
 int main(){
 
   for (int i = 0; i < 60; i++){deltas[i] = 0.0;}
@@ -95,9 +110,17 @@ int main(){
 
   glViewport(0,0,resX,resY);
 
-  Slider shakerSlider(0.0,resY-64.0,128.0,16.0,"Shaker Period");
+  Slider shakerSlider(resX-256.0,resY-64.0,128.0,16.0,"Shaker Period");
   shakerSlider.setPosition(0.5);
   shakerSlider.setProjection(textProj);
+
+  Slider particlesSlider(resX-256.0,resY-64.0*2,128.0,16.0,"Particles");
+  particlesSlider.setPosition(0.5);
+  particlesSlider.setProjection(textProj);
+
+  Slider proportionBigSlider(resX-256.0,resY-64.0*3,128.0,16.0,"Proportion Big");
+  proportionBigSlider.setPosition(0.5);
+  proportionBigSlider.setProjection(textProj);
 
   double oldMouseX = 0.0;
   double oldMouseY = 0.0;
@@ -110,6 +133,7 @@ int main(){
   bool pause = false;
 
   double shakerMaxPeriod = 2.0;
+  double propBig = 0.5;
 
   while (window.isOpen()){
 
@@ -138,18 +162,7 @@ int main(){
         if (speed > 1){
           speed = 1;
         }
-        popups.clear("speed");
-        std::string pos = fixedLengthNumber(std::ceil(100.0*speed),3);
-        popups.post(
-          FadingText(
-            "Speed: "+pos+" %",
-            3.0,
-            resX/3.0,
-            resY-64,
-            glm::vec3(0.0,0.0,0.0),
-            "speed"
-          )
-        );
+        speedPopUp(popups);
       }
 
       if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::S){
@@ -157,18 +170,7 @@ int main(){
         if (speed < 0.01){
           speed = 0.01;
         }
-        popups.clear("speed");
-        std::string pos = fixedLengthNumber(std::ceil(100.0*speed),3);
-        popups.post(
-          FadingText(
-            "Speed: "+pos+" %",
-            3.0,
-            resX/3.0,
-            resY-64,
-            glm::vec3(0.0,0.0,0.0),
-            "speed"
-          )
-        );
+        speedPopUp(popups);
       }
 
 
@@ -192,7 +194,8 @@ int main(){
       if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
         bool c = shakerSlider.clicked(pos.x,resY-pos.y);
-        std::cout << pos.x << ", " << pos.y << ", " << c << "\n";
+        particlesSlider.clicked(pos.x,resY-pos.y);
+        proportionBigSlider.clicked(pos.x,resY-pos.y);
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
 
@@ -203,12 +206,16 @@ int main(){
       if (event.type == sf::Event::MouseMoved && sf::Mouse::isButtonPressed(sf::Mouse::Left)){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
         shakerSlider.drag(pos.x,resY-pos.y);
+        particlesSlider.drag(pos.x,resY-pos.y);
+        proportionBigSlider.drag(pos.x,resY-pos.y);
       }
 
       if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
 
         shakerSlider.mouseUp();
+        particlesSlider.mouseUp();
+        proportionBigSlider.mouseUp();
       }
 
     }
@@ -220,22 +227,33 @@ int main(){
     physClock.restart();
 
     if (!pause){
-      particles.setShakerPeriod(std::max(0.1,double(shakerSlider.getPosition())*shakerMaxPeriod));
+
+      int n = std::floor(particlesSlider.getPosition()*float(N));
+      if (n < particles.size()){
+        while (n < particles.size()){
+          particles.removeParticle();
+        }
+      }
+      else if (n > particles.size()){
+        int i = particles.size()-1;
+        while (i < n){
+          particles.addParticle();
+          i++;
+        }
+      }
+
+      double val = proportionBigSlider.getPosition();
+
+      if (val != propBig){
+        particles.randomiseRadii(val);
+        propBig = val;
+      }
+
+      particles.setShakerPeriod(std::max(0.5,double(shakerSlider.getPosition())*shakerMaxPeriod));
       particles.setTimeStep(dt*speed);
       for (int s = 0; s < subSamples; s++){
         particles.step();
       }
-    }
-    else{
-      textRenderer.renderText(
-        OD,
-        "Space to resume",
-        resX/3.,
-        resY/2.,
-        0.5,
-        glm::vec3(0.,0.,0.),
-        1.0
-      );
     }
 
     physDeltas[frameId] = physClock.getElapsedTime().asSeconds();
@@ -296,11 +314,33 @@ int main(){
       OD
     );
 
+    particlesSlider.draw(
+      textRenderer,
+      OD
+    );
+
+    proportionBigSlider.draw(
+      textRenderer,
+      OD
+    );
+
     popups.draw(
       textRenderer,
       OD,
       clock.getElapsedTime().asSeconds()
     );
+
+    if(pause){
+      textRenderer.renderText(
+        OD,
+        "Space to resume",
+        resX/3.,
+        resY/2.,
+        0.5,
+        glm::vec3(0.,0.,0.),
+        1.0
+      );
+    }
 
     window.display();
 

@@ -28,17 +28,23 @@ public:
   ParticleSystem(
     uint64_t N,
     double dt = 1.0/300.0,
-    double density = 0.4,
+    double density = 0.25,
+    double Lx = 0.5, double Ly = 1.0,
     uint64_t seed = clock()
   )
   : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0),drag(0.0),
-    rotationalDrag(.01),mass(0.001), momentOfInertia(0.01),
-    rotationalDiffusion(0.01),dt(dt),damping(5.0),restoration(10000.0),
-    alpha(0.0),beta(1.0),shakerPeriod(1.0),shakerAmplitude(0.1),shakerTime(0.0)
+    rotationalDrag(.01),mass(1.0), momentOfInertia(0.01),
+    rotationalDiffusion(0.01),dt(dt),damping(100),restoration(1000000.0),
+    alpha(0.0),beta(1.0),shakerPeriod(1.0),shakerAmplitude(0.2),shakerTime(0.0),
+    Lx(Lx), Ly(Ly)
   {
+
+    floatState = new float [N*4];
+
     generator.seed(seed);
-    Nc = std::ceil(1.0/(2.0*radius));
-    delta = 1.0 / Nc;
+    Nc = std::ceil(1.0/(4*radius));
+    deltax = Lx / Nc;
+    deltay = Ly / Nc;
 
     shakerDisplacement = 0.0;
 
@@ -47,14 +53,18 @@ public:
     }
 
     for (int i = 0; i < N; i++){
-      double x = U(generator)*(1.0-2*radius)+radius;
-      double y = U(generator)*(1.0-2*radius)+radius;
+      list.push_back(NULL_INDEX);
+    }
+
+    for (int i = 0; i < N; i++){
+      double x = U(generator)*(Lx-2*radius)+radius;
+      double y = U(generator)*(Ly-2*radius)+radius;
       double theta = U(generator)*2.0*3.14;
 
       double r = i%2 == 0 ? radius : radius / 2.0;
       double m = i%2 == 0 ? mass : mass / 4.0;
 
-      addParticle(x,y,theta,r,mass);
+      addParticle(x,y,theta,r,m);
       uint64_t c = hash(i);
       if (cells[c] == NULL_INDEX){
         cells[c] = i;
@@ -70,84 +80,62 @@ public:
 
   void step();
 
-  void addParticle(double x, double y, double theta, double r, double m){
-    state.push_back(x);
-    state.push_back(y);
-    state.push_back(theta);
+  void addParticle(){
+    int i = size();
 
-    floatState.push_back(x);
-    floatState.push_back(y);
-    floatState.push_back(theta);
-    floatState.push_back(r);
+    if (i == nParticles){return;}
 
-    lastState.push_back(x);
-    lastState.push_back(y);
-    lastState.push_back(theta);
+    double x = U(generator)*(Lx-2*radius)+radius;
+    double y = U(generator)*(Ly-2*radius)+radius;
+    double theta = U(generator)*2.0*3.14;
 
-    parameters.push_back(r);
-    parameters.push_back(m);
+    double r = i%2 == 0 ? radius : radius / 2.0;
+    double m = i%2 == 0 ? mass : mass / 4.0;
 
-    forces.push_back(0.0);
-    forces.push_back(0.0);
-
-    velocities.push_back(0.0);
-    velocities.push_back(0.0);
-
-    noise.push_back(0.0);
-    noise.push_back(0.0);
-
-    list.push_back(NULL_INDEX);
+    addParticle(x,y,theta,r,m);
   }
 
-  void removeParticle(uint64_t i){
-    if (state.size() >= 3*i){
-      state.erase(
-        state.begin()+3*i,
-        state.begin()+3*i+3
-      );
-
-      floatState.erase(
-        floatState.begin()+4*i,
-        floatState.begin()+4*i+4
-      );
-
-      lastState.erase(
-        lastState.begin()+3*i,
-        lastState.begin()+3*i+3
-      );
-
-      parameters.erase(
-        parameters.begin()+2*i,
-        parameters.end()+2*i+1
-      );
-
-      forces.erase(
-        forces.begin()+2*i,
-        forces.begin()+2*i+1
-      );
-
-      velocities.erase(
-        velocities.begin()+2*i,
-        velocities.begin()+2*1+1
-      );
-
-      noise.erase(
-        noise.begin()+2*i,
-        noise.begin()+2*i+1
-      );
-
-      list.erase(list.begin()+i);
-    }
-  }
+  void removeParticle(){removeParticle(size()-1);}
 
   uint64_t size(){
     return uint64_t(std::floor(state.size() / 3));
   }
 
+  void randomiseRadii(double propBig){
+    int nBig = std::floor(propBig*size());
+    int nSmall = size()-nBig;
+    for (int i = 0; i < size(); i++){
+
+      bool coin = U(generator) > 0.5;
+
+      if (nSmall == 0 && nBig > 0){
+        parameters[i*2] = radius;
+        parameters[i*2+1] = mass;
+        nBig--;
+      }
+      else if (nBig > 0 && coin){
+        parameters[i*2] = radius;
+        parameters[i*2+1] = mass;
+        nBig--;
+      }
+      else if (nSmall > 0){
+        parameters[i*2] = radius/2.0;
+        parameters[i*2+1] = mass/4.0;
+        nSmall--;
+      }
+
+      floatState[i*4+3] = parameters[i*2];
+
+    }
+  }
+
   void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; }
 
   double getshakerPeriod(){return shakerPeriod;}
-  void setShakerPeriod(double p){shakerPeriod = p;}
+  void setShakerPeriod(double p){
+    if (p != shakerPeriod) {shakerTime = shakerTime*p/shakerPeriod;}
+    shakerPeriod = p;
+  }
   // GL public members
   void setProjection(glm::mat4 p);
   void draw(uint64_t frameId, float zoomLevel, float resX, float resY);
@@ -155,11 +143,16 @@ public:
   ~ParticleSystem(){
     // kill some GL stuff
     glDeleteProgram(particleShader);
+    glDeleteProgram(shakerShader);
 
     glDeleteBuffers(1,&offsetVBO);
     glDeleteBuffers(1,&vertVBO);
+    glDeleteBuffers(1,&shakerVBO);
 
     glDeleteVertexArrays(1,&vertVAO);
+    glDeleteVertexArrays(1,&shakerVAO);
+
+    free(floatState);
   }
 
 private:
@@ -176,8 +169,12 @@ private:
   std::vector<uint64_t> cells;
   std::vector<uint64_t> list;
 
+  double Lx;
+  double Ly;
+
   uint64_t Nc;
-  double delta;
+  double deltax;
+  double deltay;
 
   uint64_t nParticles;
 
@@ -200,8 +197,72 @@ private:
   double shakerAmplitude;
   double shakerTime;
 
+  void addParticle(double x, double y, double theta, double r, double m){
+
+    int i = size();
+
+    state.push_back(x);
+    state.push_back(y);
+    state.push_back(theta);
+
+    floatState[i*4] = x;
+    floatState[i*4+1] = y;
+    floatState[i*4+2] = theta;
+    floatState[i*4+3] = r;
+
+    lastState.push_back(x);
+    lastState.push_back(y);
+    lastState.push_back(theta);
+
+    parameters.push_back(r);
+    parameters.push_back(m);
+
+    forces.push_back(0.0);
+    forces.push_back(0.0);
+
+    velocities.push_back(0.0);
+    velocities.push_back(0.0);
+
+    noise.push_back(0.0);
+    noise.push_back(0.0);
+  }
+
+  void removeParticle(uint64_t i){
+    if (state.size() >= 3*i){
+      state.erase(
+        state.begin()+3*i,
+        state.begin()+3*i+3
+      );
+
+      lastState.erase(
+        lastState.begin()+3*i,
+        lastState.begin()+3*i+3
+      );
+
+      parameters.erase(
+        parameters.begin()+2*i,
+        parameters.begin()+2*i+2
+      );
+
+      forces.erase(
+        forces.begin()+2*i,
+        forces.begin()+2*i+2
+      );
+
+      velocities.erase(
+        velocities.begin()+2*i,
+        velocities.begin()+2*i+2
+      );
+
+      noise.erase(
+        noise.begin()+2*i,
+        noise.begin()+2*i+2
+      );
+    }
+  }
+
   // GL data members
-  std::vector<float> floatState;
+  float * floatState;
   GLuint particleShader, offsetVBO, vertVAO, vertVBO;
   glm::mat4 projection;
 
@@ -210,12 +271,12 @@ private:
   GLuint shakerShader, shakerVAO, shakerVBO;
 
   float shakerVertices[6*2] = {
-    -1.0, 0.0,
-    -1.0, 1.0,
-     0.0, 1.0,
-    -1.0, 0.0,
-     0.0, 1.0,
-     0.0, 0.0
+     0.0, -1.0,
+     0.0,  0.0,
+     0.5,  0.0,
+     0.0, -1.0,
+     0.5, -1.0,
+     0.5, 0.0
   };
 
   void resetLists();
@@ -230,7 +291,7 @@ private:
   );
 
   uint64_t hash(uint64_t particle){
-    return uint64_t(floor(state[particle*3]/delta))*Nc + uint64_t(floor(state[particle*3+1]/delta));
+    return uint64_t(floor(state[particle*3]/deltax))*Nc + uint64_t(floor(state[particle*3+1]/deltay));
   }
 
   void newTimeStepStates(double oldDt, double newDt);

@@ -5,10 +5,9 @@ const char * shakerVertexShader = "#version 330 core\n"
   "layout(location=0) in vec2 a_position;\n"
   "\n"
   "uniform mat4 proj;\n"
-  "uniform vec2 offsets;\n"
+  "uniform float offset;\n"
   "void main(){\n"
-  " if (gl_InstanceID == 0){ gl_Position = proj*vec4(a_position.x+offsets.x,a_position.y,0.0,1.0); }"
-  " if (gl_InstanceID == 1){ gl_Position = proj*vec4(a_position.x+offsets.y+2.0,a_position.y,0.0,1.0); }"
+  " gl_Position = proj*vec4(a_position.x,a_position.y+offset,0.0,1.0);"
   " \n"
   "}";
 
@@ -42,7 +41,7 @@ const char * sliderFragmentShader = "#version 330 core\n"
   "uniform vec2 state;\n"
   "out vec4 colour;\n"
   "void main(){"
-    "if (gl_FragCoord.x > state.x && gl_FragCoord.x < state.x+state.y){colour=fillColour;}"
+    "if (gl_FragCoord.x > state.x && gl_FragCoord.x < state.y){colour=fillColour;}"
     "else {colour = frameColour;}"
   "}";
 

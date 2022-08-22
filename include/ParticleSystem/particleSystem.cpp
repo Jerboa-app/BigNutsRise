@@ -20,7 +20,7 @@ void ParticleSystem::insert(uint64_t next, uint64_t particle){
 
 void ParticleSystem::populateLists(
 ){
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     uint64_t c = hash(i);                                                    // flat index for the particle's cell
     if (cells[c] == NULL_INDEX){
       cells[c] = uint64_t(i);                                                     // we are the head!
@@ -91,14 +91,14 @@ void ParticleSystem::cellCollisions(
 }
 
 void ParticleSystem::applyForce(double fx, double fy){
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     forces[i*2] += fx;
     forces[i*2+1] += fy;
   }
 }
 
 void ParticleSystem::newTimeStepStates(double oldDt, double newDt){
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     for (int k = 0; k < 3; k++){
       double delta = state[i*3+k]-lastState[i*3+k];
       lastState[i*3+k] = state[i*3+k]-(newDt/oldDt)*delta;
@@ -142,15 +142,14 @@ void ParticleSystem::step(){
 
   glUseProgram(shakerShader);
 
-  glUniform2f(
-    glGetUniformLocation(shakerShader,"offsets"),
-    shakerDisplacement+shakerAmplitude,
-    shakerDisplacement-shakerAmplitude
+  glUniform1f(
+    glGetUniformLocation(shakerShader,"offset"),
+    shakerDisplacement+shakerAmplitude
   );
 
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
 
-    double ct = (drag*dt)/(2.0*parameters[i*2]);
+    double ct = (drag*dt)/(2.0*parameters[i*2+1]);
     double bt = 1.0 / (1.0 + ct);
     double at = (1.0-ct)*bt;
 
@@ -179,29 +178,32 @@ void ParticleSystem::step(){
     //
     // mag = -damping*ddot*std::pow(d,alpha)-restoration*std::pow(d,beta);
 
-    if (x - radius <= (shakerDisplacement + shakerAmplitude)){
-      double mag = restoration*((shakerDisplacement + shakerAmplitude)+radius-x);
-      double f = std::abs(mag); //- mag*damping*velocities[i*2];
-      forces[i*2] += f;
-      // little kick, up, or else particles get stuck on the bottom and mash together
-      forces[i*2+1] += 0.1*std::abs(f);
-    }
-
-    if (x + radius >= 1.0+shakerDisplacement-shakerAmplitude){
-      double mag = restoration*(x+radius-(1.0+shakerDisplacement-shakerAmplitude));
-      double f = -std::abs(mag);// + mag*damping*velocities[i*2];
-      forces[i*2] += f;
-      // little kick, up, or else particles get stuck on the bottom and mash together
-      forces[i*2+1] += 0.1*std::abs(f);
+    // if (x - radius <= (shakerDisplacement + shakerAmplitude)){
+    //   double mag = restoration*((shakerDisplacement + shakerAmplitude)+radius-x);
+    //   double f = std::abs(mag); //- mag*damping*velocities[i*2];
+    //   forces[i*2] += f;
+    //   // little kick, up, or else particles get stuck on the bottom and mash together
+    //   forces[i*2+1] += 0.1*std::abs(f);
+    // }
+    //
+    // if (x + radius >= 1.0+shakerDisplacement-shakerAmplitude){
+    //   double mag = restoration*(x+radius-(1.0+shakerDisplacement-shakerAmplitude));
+    //   double f = -std::abs(mag);// + mag*damping*velocities[i*2];
+    //   forces[i*2] += f;
+    //   // little kick, up, or else particles get stuck on the bottom and mash together
+    //   forces[i*2+1] += 0.1*std::abs(f);
+    // }
+    if (y - parameters[2*i] <= (shakerDisplacement + shakerAmplitude)){
+      double mag = (shakerDisplacement + shakerAmplitude)+parameters[2*i]-y;
+      double f = std::abs(mag)*restoration - std::abs(mag)*damping*velocities[i*2+1];
+      forces[i*2+1] += f;
     }
 
     double ax = drag*speed*cos(theta)+forces[i*2];
-    double ay = drag*speed*sin(theta)+forces[i*2+1]-9.81*parameters[i*2];
+    double ay = drag*speed*sin(theta)+forces[i*2+1]-9.81*parameters[i*2+1];
 
-    //if(i==0){std::cout << std::setprecision(20) << (bt*dtdt/parameters[i*2];)*ay << ", " << 2.0*bt*y << ", " << at*yp << "\n";}
-    state[i*3] = 2.0*bt*x - at*xp + (bt*dtdt/parameters[i*2])*ax;
-    state[i*3+1] = 2.0*bt*y - at*yp + (bt*dtdt/parameters[i*2])*ay;
-    //state[i*3+2] = 2.0*br*theta - ar*thetap + (br*dt/(2.0*momentOfInertia))*(noise[i*2]+noise[i*2+1])*dt*rotationalDrag*D;
+    state[i*3] = 2.0*bt*x - at*xp + (bt*dtdt/parameters[i*2+1])*ax;
+    state[i*3+1] = 2.0*bt*y - at*yp + (bt*dtdt/parameters[i*2+1])*ay;
 
     lastState[i*3] = x;
     lastState[i*3+1] = y;
@@ -218,14 +220,14 @@ void ParticleSystem::step(){
     bool flag = false;
 
     // kill the particles movement if it's outside the box
-    if (state[i*3]-radius < 0 || state[i*3]+radius > 1.0){
-      ux = -vx;
+    if (state[i*3]-parameters[2*i] < 0 || state[i*3]+parameters[2*i] > Lx){
+      ux = -1.0*vx;
       ang = std::atan2(vy,ux);
       flag = true;
     }
 
-    if (state[i*3+1]-radius < 0 || state[i*3+1]+radius > 1.0){
-      uy = -1.5*vy;
+    if (state[i*3+1]-parameters[2*i] < 0 || state[i*3+1]+parameters[2*i] > Ly){
+      uy = -1.0*vy;
       if (flag){
         ang = std::atan2(uy,ux);
       }
@@ -239,17 +241,14 @@ void ParticleSystem::step(){
       state[i*3+2] = ang;
       state[i*3+1] += uy;
       state[i*3] += ux;
-
-      lastState[i*3+2] = ang;
-      lastState[i*3+1] = state[i*3+1]-0.5*uy;
-      lastState[i*3] = state[i*3]-0.5*ux;
     }
 
     if (state[i*3] == 1.0){ state[i*3] -= 0.001;}
     if (state[i*3+1] == 1.0){ state[i*3+1] -= 0.001;}
+
   }
 
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     forces[i*2] = 0.0;
     forces[i*2+1] = 0.0;
 

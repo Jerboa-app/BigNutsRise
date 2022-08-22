@@ -17,6 +17,7 @@
 
 #include <ParticleSystem/particleSystem.cpp>
 #include <Text/textRenderer.cpp>
+#include <Text/popup.cpp>
 
 #include <Menu/slider.cpp>
 
@@ -29,7 +30,7 @@
 const int resX = 720;
 const int resY = 720;
 
-const int subSamples = 20;
+const int subSamples = 40;
 const float dt = (1.0 / 60.0) / subSamples;
 
 const int N = 1024;
@@ -88,6 +89,8 @@ int main(){
 
   Type OD("resources/fonts/","OpenDyslexic-Regular.otf",48);
 
+  Popup popups;
+
   OrthoCam camera(resX,resY,glm::vec2(0.0,0.0));
 
   glViewport(0,0,resX,resY);
@@ -132,6 +135,18 @@ int main(){
         if (speed > 1){
           speed = 1;
         }
+        popups.clear("speed");
+        std::string pos = fixedLengthNumber(std::ceil(100.0*speed),3);
+        popups.post(
+          FadingText(
+            "Speed: "+pos+" %",
+            3.0,
+            resX/3.0,
+            resY-64,
+            glm::vec3(0.0,0.0,0.0),
+            "speed"
+          )
+        );
       }
 
       if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::S){
@@ -139,6 +154,18 @@ int main(){
         if (speed < 0.01){
           speed = 0.01;
         }
+        popups.clear("speed");
+        std::string pos = fixedLengthNumber(std::ceil(100.0*speed),3);
+        popups.post(
+          FadingText(
+            "Speed: "+pos+" %",
+            3.0,
+            resX/3.0,
+            resY-64,
+            glm::vec3(0.0,0.0,0.0),
+            "speed"
+          )
+        );
       }
 
 
@@ -205,6 +232,17 @@ int main(){
         particles.step();
       }
     }
+    else{
+      textRenderer.renderText(
+        OD,
+        "Space to resume",
+        resX/3.,
+        resY/2.,
+        0.5,
+        glm::vec3(0.,0.,0.),
+        1.0
+      );
+    }
 
     physDeltas[frameId] = physClock.getElapsedTime().asSeconds();
 
@@ -262,6 +300,12 @@ int main(){
     slider.draw(
       textRenderer,
       OD
+    );
+
+    popups.draw(
+      textRenderer,
+      OD,
+      clock.getElapsedTime().asSeconds()
     );
 
     window.display();

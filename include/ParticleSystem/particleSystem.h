@@ -28,13 +28,13 @@ public:
   ParticleSystem(
     uint64_t N,
     double dt = 1.0/300.0,
-    double density = 0.1,
+    double density = 0.4,
     uint64_t seed = clock()
   )
-  : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0.0),drag(0),
-    rotationalDrag(.01),mass(0.005), momentOfInertia(0.01),
-    rotationalDiffusion(0.001),dt(dt),damping(200.0),restoration(600.0),
-    alpha(0.0),beta(1.0),shakerPeriod(1),shakerAmplitude(0.1),shakerTime(0.0)
+  : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0),drag(0.0),
+    rotationalDrag(.01),mass(0.001), momentOfInertia(0.01),
+    rotationalDiffusion(0.01),dt(dt),damping(5.0),restoration(10000.0),
+    alpha(0.0),beta(1.0),shakerPeriod(0.1),shakerAmplitude(0.1),shakerTime(0.0)
   {
     generator.seed(seed);
     Nc = std::ceil(1.0/(2.0*radius));
@@ -49,7 +49,10 @@ public:
       double y = U(generator)*(1.0-2*radius)+radius;
       double theta = U(generator)*2.0*3.14;
 
-      addParticle(x,y,theta);
+      double r = i%2 == 0 ? radius : radius / 2.0;
+      double m = i%2 == 0 ? mass : mass / 4.0;
+
+      addParticle(x,y,theta,r,mass);
       uint64_t c = hash(i);
       if (cells[c] == NULL_INDEX){
         cells[c] = i;
@@ -65,7 +68,7 @@ public:
 
   void step();
 
-  void addParticle(double x, double y, double theta){
+  void addParticle(double x, double y, double theta, double r, double m){
     state.push_back(x);
     state.push_back(y);
     state.push_back(theta);
@@ -73,10 +76,14 @@ public:
     floatState.push_back(x);
     floatState.push_back(y);
     floatState.push_back(theta);
+    floatState.push_back(r);
 
     lastState.push_back(x);
     lastState.push_back(y);
     lastState.push_back(theta);
+
+    parameters.push_back(r);
+    parameters.push_back(m);
 
     forces.push_back(0.0);
     forces.push_back(0.0);
@@ -98,13 +105,18 @@ public:
       );
 
       floatState.erase(
-        floatState.begin()+3*i,
-        floatState.begin()+3*i+3
+        floatState.begin()+4*i,
+        floatState.begin()+4*i+4
       );
 
       lastState.erase(
         lastState.begin()+3*i,
         lastState.begin()+3*i+3
+      );
+
+      parameters.erase(
+        parameters.begin()+2*i,
+        parameters.end()+2*i+1
       );
 
       forces.erase(
@@ -151,6 +163,8 @@ private:
   std::vector<double> state;
   std::vector<double> lastState;
   std::vector<double> noise;
+
+  std::vector<double> parameters;
 
   std::vector<double> forces;
   std::vector<double> velocities;

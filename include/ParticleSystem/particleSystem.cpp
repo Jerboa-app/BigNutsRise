@@ -37,13 +37,14 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
   rx = state[j*3]-state[i*3];
   ry = state[j*3+1]-state[i*3+1];
   dd = rx*rx+ry*ry;
-  if (dd < 4.0*radius*radius){
+  double rc = parameters[i*2]+parameters[j*2];
+  if (dd < rc*rc){
     d = std::sqrt(dd);
 
     nx = rx / d;
     ny = ry / d;
 
-    d = 2*radius-d;
+    d = rc-d;
 
     vx = velocities[i*2]-velocities[j*2];
     vy = velocities[i*2+1]-velocities[j*2+1];
@@ -62,26 +63,6 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
     forces[j*2+1] -= fy;
   }
 }
-
-// void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
-//   if (i == j){return;}
-//   double rx,ry,dd,d,mag,fx,fy;
-//   rx = state[j*3]-state[i*3];
-//   ry = state[j*3+1]-state[i*3+1];
-//   dd = rx*rx+ry*ry;
-//   if (dd < 4.0*radius*radius){
-//     d = std::sqrt(dd);
-//     mag = restoration*(2.0*radius-d)/d;
-//     fx = mag*rx;
-//     fy = mag*ry;
-//
-//     forces[i*2] -= fx;
-//     forces[i*2+1] -= fy;
-//
-//     forces[j*2] += fx;
-//     forces[j*2+1] += fy;
-//   }
-// }
 
 void ParticleSystem::cellCollisions(
   uint64_t a1,
@@ -131,6 +112,7 @@ void ParticleSystem::step(){
   populateLists();
   float setup = (clock()-tic)/float(CLOCKS_PER_SEC);
   tic = clock();
+
   for (int a = 0; a < Nc; a++){
     for (int b = 0; b < Nc; b++){
       cellCollisions(a,b,a,b);
@@ -154,10 +136,6 @@ void ParticleSystem::step(){
   double br = 1.0 / (1.0 + cr);
   double ar = (1.0-cr)*br;
 
-  double ct = (drag*dt)/(2.0*mass);
-  double bt = 1.0 / (1.0 + ct);
-  double at = (1.0-ct)*bt;
-
   double shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
 
   glUseProgram(shakerShader);
@@ -169,6 +147,10 @@ void ParticleSystem::step(){
   );
 
   for (int i = 0; i < nParticles; i++){
+
+    double ct = (drag*dt)/(2.0*parameters[i*2]);
+    double bt = 1.0 / (1.0 + ct);
+    double at = (1.0-ct)*bt;
 
     noise[i*2+1] = noise[i*2];
     noise[i*2] = normal(generator);
@@ -197,27 +179,27 @@ void ParticleSystem::step(){
 
     if (x - radius <= (shakerDisplacement + shakerAmplitude)){
       double mag = restoration*((shakerDisplacement + shakerAmplitude)+radius-x);
-      double f = std::abs(mag) - mag*damping*velocities[i*2];
-      //forces[i*2] += f;
+      double f = std::abs(mag); //- mag*damping*velocities[i*2];
+      forces[i*2] += f;
       // little kick, up, or else particles get stuck on the bottom and mash together
-      //forces[i*2+1] += 0.1*std::abs(f);
+      forces[i*2+1] += 0.1*std::abs(f);
     }
 
     if (x + radius >= 1.0+shakerDisplacement-shakerAmplitude){
       double mag = restoration*(x+radius-(1.0+shakerDisplacement-shakerAmplitude));
-      double f = -std::abs(mag) + mag*damping*velocities[i*2];
-      //forces[i*2] += f;
+      double f = -std::abs(mag);// + mag*damping*velocities[i*2];
+      forces[i*2] += f;
       // little kick, up, or else particles get stuck on the bottom and mash together
-      //forces[i*2+1] += 0.1*std::abs(f);
+      forces[i*2+1] += 0.1*std::abs(f);
     }
 
     double ax = drag*speed*cos(theta)+forces[i*2];
-    double ay = drag*speed*sin(theta)+forces[i*2+1]-mass*9.81;
+    double ay = drag*speed*sin(theta)+forces[i*2+1]-9.81*parameters[i*2];
 
-    //if(i==0){std::cout << std::setprecision(20) << (bt*dtdt/mass)*ay << ", " << 2.0*bt*y << ", " << at*yp << "\n";}
-    state[i*3] = 2.0*bt*x - at*xp + (bt*dtdt/mass)*ax;
-    state[i*3+1] = 2.0*bt*y - at*yp + (bt*dtdt/mass)*ay;
-    state[i*3+2] = 2.0*br*theta - ar*thetap + (br*dt/(2.0*momentOfInertia))*(noise[i*2]+noise[i*2+1])*dt*rotationalDrag*D;
+    //if(i==0){std::cout << std::setprecision(20) << (bt*dtdt/parameters[i*2];)*ay << ", " << 2.0*bt*y << ", " << at*yp << "\n";}
+    state[i*3] = 2.0*bt*x - at*xp + (bt*dtdt/parameters[i*2])*ax;
+    state[i*3+1] = 2.0*bt*y - at*yp + (bt*dtdt/parameters[i*2])*ay;
+    //state[i*3+2] = 2.0*br*theta - ar*thetap + (br*dt/(2.0*momentOfInertia))*(noise[i*2]+noise[i*2+1])*dt*rotationalDrag*D;
 
     lastState[i*3] = x;
     lastState[i*3+1] = y;
@@ -226,8 +208,8 @@ void ParticleSystem::step(){
     double vx = state[i*3]-lastState[i*3];
     double vy = state[i*3+1]-lastState[i*3+1];
 
-    velocities[i*2] = vx;
-    velocities[i*2+1] = vy;
+    velocities[i*2] = vx/dt;
+    velocities[i*2+1] = vy/dt;
 
     double ux = 0.0; double uy = 0.0;
     double ang = state[i*3+2];
@@ -269,7 +251,7 @@ void ParticleSystem::step(){
     forces[i*2] = 0.0;
     forces[i*2+1] = 0.0;
 
-    for (int k = 0; k < 3; k++){floatState[i*3+k] = float(state[i*3+k]);}
+    for (int k = 0; k < 3; k++){floatState[i*4+k] = float(state[i*3+k]);}
   }
 
   shakerTime += dt;
@@ -301,7 +283,7 @@ void ParticleSystem::initialiseGL(){
   // a buffer of particle states
   glGenBuffers(1,&offsetVBO);
   glBindBuffer(GL_ARRAY_BUFFER,offsetVBO);
-  glBufferData(GL_ARRAY_BUFFER,sizeof(float)*nParticles*3,&floatState[0],GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,sizeof(float)*nParticles*4,&floatState[0],GL_DYNAMIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER,0);
 
   // setup an array object
@@ -317,7 +299,7 @@ void ParticleSystem::initialiseGL(){
   glEnableVertexAttribArray(1);
   glBindBuffer(GL_ARRAY_BUFFER, offsetVBO);
   // place states
-  glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),(void*)0);
+  glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,4*sizeof(float),(void*)0);
   glBindBuffer(GL_ARRAY_BUFFER,0);
   glVertexAttribDivisor(1,1);
 
@@ -349,7 +331,7 @@ void ParticleSystem::initialiseGL(){
 
   glUniform4f(
     glGetUniformLocation(shakerShader,"u_colour"),
-    0,0,0,1
+    0,0,0,0.33
   );
 
   glGenVertexArrays(1,&shakerVAO);
@@ -383,11 +365,11 @@ void ParticleSystem::draw(
 
   glUniform1f(
     glGetUniformLocation(particleShader,"scale"),
-    resX*radius*2.0
+    resX*2.0
   );
 
   glBindBuffer(GL_ARRAY_BUFFER,offsetVBO);
-  glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)*nParticles*3,&floatState[0]);
+  glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)*nParticles*4,&floatState[0]);
   glBindBuffer(GL_ARRAY_BUFFER,0);
 
   glError("particles buffers");
@@ -401,7 +383,7 @@ void ParticleSystem::draw(
   glUseProgram(shakerShader);
 
   glBindVertexArray(shakerVAO);
-  //glDrawArraysInstanced(GL_TRIANGLES,0,6,2);
+  glDrawArraysInstanced(GL_TRIANGLES,0,6,2);
   glBindVertexArray(0);
 
   glError("draw shaker");

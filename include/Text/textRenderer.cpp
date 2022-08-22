@@ -33,7 +33,8 @@ void TextRenderer::renderText(
   float x,
   float y,
   float scale,
-  glm::vec3 colour){
+  glm::vec3 colour,
+  float alpha){
     // have a look at this https://learnopengl.com/In-Practice/Text-Rendering
     // Some modifications have been made, e.g to render \n characters as line breaks
 
@@ -44,6 +45,7 @@ void TextRenderer::renderText(
     glError("Setting textColour uniform for type: ");
     glUniform1i(glGetUniformLocation(shader, "glyph"), 0);
     glError("Setting texture id uniform for type: ");
+    glUniform1f(glGetUniformLocation(shader, "alpha"), alpha);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(VAO);
 

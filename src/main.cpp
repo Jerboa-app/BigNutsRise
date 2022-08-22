@@ -30,7 +30,7 @@
 const int resX = 720;
 const int resY = 720;
 
-const int subSamples = 40;
+const int subSamples = 60;
 const float dt = (1.0 / 60.0) / subSamples;
 
 const int N = 1024;
@@ -95,9 +95,9 @@ int main(){
 
   glViewport(0,0,resX,resY);
 
-  Slider slider(0.0,resY-64.0,128.0,16.0,"Stiffness");
-  slider.setPosition(0.5);
-  slider.setProjection(textProj);
+  Slider shakerSlider(0.0,resY-64.0,128.0,16.0,"Shaker Period");
+  shakerSlider.setPosition(0.5);
+  shakerSlider.setProjection(textProj);
 
   double oldMouseX = 0.0;
   double oldMouseY = 0.0;
@@ -109,7 +109,10 @@ int main(){
 
   bool pause = false;
 
+  double shakerMaxPeriod = 2.0;
+
   while (window.isOpen()){
+
 
     sf::Event event;
     while (window.pollEvent(event)){
@@ -188,7 +191,7 @@ int main(){
 
       if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
-        bool c = slider.clicked(pos.x,resY-pos.y);
+        bool c = shakerSlider.clicked(pos.x,resY-pos.y);
         std::cout << pos.x << ", " << pos.y << ", " << c << "\n";
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
@@ -199,22 +202,13 @@ int main(){
 
       if (event.type == sf::Event::MouseMoved && sf::Mouse::isButtonPressed(sf::Mouse::Left)){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
-        slider.drag(pos.x,resY-pos.y);
+        shakerSlider.drag(pos.x,resY-pos.y);
       }
 
       if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
 
-        // multiply by inverse of current projection
-        glm::vec4 worldPosA = camera.screenToWorld(oldMouseX,oldMouseY);
-
-        glm::vec4 worldPosB = camera.screenToWorld(pos.x,pos.y);
-
-        glm::vec4 worldPosDelta = worldPosB-worldPosA;
-
-        camera.move(worldPosDelta.x,worldPosDelta.y);
-
-        slider.mouseUp();
+        shakerSlider.mouseUp();
       }
 
     }
@@ -226,7 +220,7 @@ int main(){
     physClock.restart();
 
     if (!pause){
-
+      particles.setShakerPeriod(std::max(0.1,double(shakerSlider.getPosition())*shakerMaxPeriod));
       particles.setTimeStep(dt*speed);
       for (int s = 0; s < subSamples; s++){
         particles.step();
@@ -297,7 +291,7 @@ int main(){
       );
     }
 
-    slider.draw(
+    shakerSlider.draw(
       textRenderer,
       OD
     );

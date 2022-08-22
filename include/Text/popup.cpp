@@ -3,8 +3,6 @@
 void Popup::draw(TextRenderer & text, Type & type, float dt){
   for (int i = 0; i < popups.size(); i++){
 
-    std::cout << popups[i].alpha() << "\n";
-
     text.renderText(
       type,
       popups[i].text,

@@ -136,7 +136,9 @@ void ParticleSystem::step(){
   double br = 1.0 / (1.0 + cr);
   double ar = (1.0-cr)*br;
 
-  double shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
+  //std::cout << shakerPeriod << "\n";
+  //shakerDisplacement += shakerAmplitude*2.0*M_PI/shakerPeriod * std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
+  shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
 
   glUseProgram(shakerShader);
 

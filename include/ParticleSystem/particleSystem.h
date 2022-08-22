@@ -34,11 +34,13 @@ public:
   : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0),drag(0.0),
     rotationalDrag(.01),mass(0.001), momentOfInertia(0.01),
     rotationalDiffusion(0.01),dt(dt),damping(5.0),restoration(10000.0),
-    alpha(0.0),beta(1.0),shakerPeriod(0.1),shakerAmplitude(0.1),shakerTime(0.0)
+    alpha(0.0),beta(1.0),shakerPeriod(1.0),shakerAmplitude(0.1),shakerTime(0.0)
   {
     generator.seed(seed);
     Nc = std::ceil(1.0/(2.0*radius));
     delta = 1.0 / Nc;
+
+    shakerDisplacement = 0.0;
 
     for (int c = 0; c < Nc*Nc; c++){
       cells.push_back(NULL_INDEX);
@@ -144,6 +146,8 @@ public:
 
   void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; }
 
+  double getshakerPeriod(){return shakerPeriod;}
+  void setShakerPeriod(double p){shakerPeriod = p;}
   // GL public members
   void setProjection(glm::mat4 p);
   void draw(uint64_t frameId, float zoomLevel, float resX, float resY);
@@ -191,6 +195,7 @@ private:
   double momentOfInertia;
   double dt;
 
+  double shakerDisplacement;
   double shakerPeriod;
   double shakerAmplitude;
   double shakerTime;

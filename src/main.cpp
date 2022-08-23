@@ -30,7 +30,7 @@
 const int resX = 720;
 const int resY = 720;
 
-const int subSamples = 60;
+const int subSamples = 40;
 const float dt = (1.0 / 60.0) / subSamples;
 
 const int N = 1024;
@@ -110,17 +110,25 @@ int main(){
 
   glViewport(0,0,resX,resY);
 
-  Slider shakerSlider(resX-256.0,resY-64.0,128.0,16.0,"Shaker Period");
+  Slider amplitudeSlider(resX-256.0,resY-64.0,128.0,16.0,"Shaker Amplitude");
+  amplitudeSlider.setPosition(0.5);
+  amplitudeSlider.setProjection(textProj);
+
+  Slider shakerSlider(resX-256.0,resY-64.0*2,128.0,16.0,"Shaker Period");
   shakerSlider.setPosition(0.5);
   shakerSlider.setProjection(textProj);
 
-  Slider particlesSlider(resX-256.0,resY-64.0*2,128.0,16.0,"Particles");
+  Slider particlesSlider(resX-256.0,resY-64.0*3,128.0,16.0,"Particles");
   particlesSlider.setPosition(0.5);
   particlesSlider.setProjection(textProj);
 
-  Slider proportionBigSlider(resX-256.0,resY-64.0*3,128.0,16.0,"Proportion Big");
+  Slider proportionBigSlider(resX-256.0,resY-64.0*4,128.0,16.0,"Proportion Big");
   proportionBigSlider.setPosition(0.5);
   proportionBigSlider.setProjection(textProj);
+
+  Slider restitutionSlider(resX-256.0,resY-64.0*5,128.0,16.0,"Coef. Restitution");
+  restitutionSlider.setPosition(0.5);
+  restitutionSlider.setProjection(textProj);
 
   double oldMouseX = 0.0;
   double oldMouseY = 0.0;
@@ -132,8 +140,9 @@ int main(){
 
   bool pause = false;
 
-  double shakerMaxPeriod = 2.0;
+  double shakerMaxPeriod = 1.0;
   double propBig = 0.5;
+  double maxAmplitude = 10.0; // measured in particle radius units!
 
   while (window.isOpen()){
 
@@ -196,6 +205,8 @@ int main(){
         bool c = shakerSlider.clicked(pos.x,resY-pos.y);
         particlesSlider.clicked(pos.x,resY-pos.y);
         proportionBigSlider.clicked(pos.x,resY-pos.y);
+        restitutionSlider.clicked(pos.x,resY-pos.y);
+        amplitudeSlider.clicked(pos.x,resY-pos.y);
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
 
@@ -208,6 +219,8 @@ int main(){
         shakerSlider.drag(pos.x,resY-pos.y);
         particlesSlider.drag(pos.x,resY-pos.y);
         proportionBigSlider.drag(pos.x,resY-pos.y);
+        restitutionSlider.drag(pos.x,resY-pos.y);
+        amplitudeSlider.drag(pos.x,resY-pos.y);
       }
 
       if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left){
@@ -216,6 +229,8 @@ int main(){
         shakerSlider.mouseUp();
         particlesSlider.mouseUp();
         proportionBigSlider.mouseUp();
+        restitutionSlider.mouseUp();
+        amplitudeSlider.mouseUp();
       }
 
     }
@@ -249,8 +264,13 @@ int main(){
         propBig = val;
       }
 
-      particles.setShakerPeriod(std::max(0.5,double(shakerSlider.getPosition())*shakerMaxPeriod));
+      particles.setShakerPeriod(std::max(0.005,double(shakerSlider.getPosition())*shakerMaxPeriod));
+      particles.setShakerAmplitude(amplitudeSlider.getPosition()*maxAmplitude);
+      particles.setCoeffientOfRestitution(std::min(std::max(0.1,double(restitutionSlider.getPosition())),0.98));
+
       particles.setTimeStep(dt*speed);
+
+
       for (int s = 0; s < subSamples; s++){
         particles.step();
       }
@@ -299,7 +319,8 @@ int main(){
         "Mouse (" << fixedLengthNumber(mouse.x,4) << "," << fixedLengthNumber(mouse.y,4) << ")" <<
         "\n" <<
         "Camera [world] (" << fixedLengthNumber(cameraX,4) << ", " << fixedLengthNumber(cameraY,4) << ")" <<
-        "\n";
+        "\n" <<
+        "Order: " << fixedLengthNumber(particles.orderParameter(),6) << "\n";
       textRenderer.renderText(
         OD,
         debugText.str(),
@@ -320,6 +341,16 @@ int main(){
     );
 
     proportionBigSlider.draw(
+      textRenderer,
+      OD
+    );
+
+    restitutionSlider.draw(
+      textRenderer,
+      OD
+    );
+
+    amplitudeSlider.draw(
       textRenderer,
       OD
     );

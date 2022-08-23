@@ -51,7 +51,22 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
 
     ddot = vx*nx+vy*ny;
 
-    mag = -damping*ddot*std::pow(d,alpha)-restoration*std::pow(d,beta);
+    double damping, restoration;
+
+    if (parameters[i*2+1] == mass && parameters[j*2+1] == mass){
+      damping = dampingBB; restoration = restorationBB;
+    }
+    else if (parameters[i*2+1] == mass && parameters[j*2+1] < mass){
+      damping = dampingSB; restoration = restorationSB;
+    }
+    if (parameters[i*2+1] < mass && parameters[j*2+1] == mass){
+      damping = dampingSB; restoration = restorationSB;
+    }
+    if (parameters[i*2+1] < mass && parameters[j*2+1] < mass){
+      damping = dampingSS; restoration = restorationSS;
+    }
+
+    mag = -damping*ddot-restoration*std::pow(d,beta);
 
     fx = mag*nx;
     fy = mag*ny;
@@ -90,11 +105,75 @@ void ParticleSystem::cellCollisions(
   }
 }
 
+double ParticleSystem::orderParameter(){
+  double step = radius;
+  int nl = 0;
+  int ns = 0;
+
+  for (int i = 0; i < size(); i++){
+    if (parameters[i*2] == radius){
+      nl += 1;
+    }
+    else{
+      ns += 1;
+    }
+  }
+
+  double mu = nl / float(nl+ns);
+  double y = 0.0;
+  double sigma = 0.0;
+  double A = 0.0;
+  while (y < Ly){
+    int l = 0;
+    int s = 0;
+    for (int i = 0; i < size(); i++){
+      if (state[i*3+1] >= y && state[i*3+1] <= y+step){
+        if (parameters[i*2] == radius){
+          l += 1;
+        }
+        else{
+          s += 1;
+        }
+      }
+    }
+
+    if (l==0 && s==0){
+      y+=step; continue;
+    }
+
+    double fi = l / float(l+s);
+    double Ai = l+s;
+    sigma += Ai*(fi-mu)*(fi-mu);
+    A += Ai;
+    y += step;
+  }
+
+  return (sigma/A)/mu;
+}
+
 void ParticleSystem::applyForce(double fx, double fy){
   for (int i = 0; i < size(); i++){
     forces[i*2] += fx;
     forces[i*2+1] += fy;
   }
+}
+
+void ParticleSystem::setCoeffientOfRestitution(double c){
+
+  if (coefficientOfRestitution == c){
+    return;
+  }
+
+  coefficientOfRestitution = c;
+
+  dampingBB = damping(mass,mass);
+  restorationBB = restoration(mass,mass);
+
+  dampingSS = damping(mass/4.0,mass/4.0);
+  restorationSS = restoration(mass/4.0,mass/4.0);
+
+  dampingSB = damping(mass,mass/4.0);
+  restorationSB = restoration(mass,mass/4.0);
 }
 
 void ParticleSystem::newTimeStepStates(double oldDt, double newDt){
@@ -139,6 +218,9 @@ void ParticleSystem::step(){
   //std::cout << shakerPeriod << "\n";
   //shakerDisplacement += shakerAmplitude*2.0*M_PI/shakerPeriod * std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
   shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
+  double xShakerAmplitude = 0.01*shakerAmplitude;
+  double xShakerPeriod = 0.1*shakerPeriod;
+  double xShakerDisplacement = xShakerAmplitude*std::cos(2.0*M_PI*shakerTime/(xShakerPeriod));
 
   glUseProgram(shakerShader);
 
@@ -148,6 +230,15 @@ void ParticleSystem::step(){
   );
 
   for (int i = 0; i < size(); i++){
+
+    double damping, restoration;
+
+    if (parameters[i*2+1] == mass){
+      damping = dampingBB; restoration = restorationBB;
+    }
+    else{
+      damping = dampingSS; restoration = restorationSS;
+    }
 
     double ct = (drag*dt)/(2.0*parameters[i*2+1]);
     double bt = 1.0 / (1.0 + ct);
@@ -178,24 +269,25 @@ void ParticleSystem::step(){
     //
     // mag = -damping*ddot*std::pow(d,alpha)-restoration*std::pow(d,beta);
 
-    // if (x - radius <= (shakerDisplacement + shakerAmplitude)){
-    //   double mag = restoration*((shakerDisplacement + shakerAmplitude)+radius-x);
-    //   double f = std::abs(mag); //- mag*damping*velocities[i*2];
-    //   forces[i*2] += f;
-    //   // little kick, up, or else particles get stuck on the bottom and mash together
-    //   forces[i*2+1] += 0.1*std::abs(f);
-    // }
-    //
-    // if (x + radius >= 1.0+shakerDisplacement-shakerAmplitude){
-    //   double mag = restoration*(x+radius-(1.0+shakerDisplacement-shakerAmplitude));
-    //   double f = -std::abs(mag);// + mag*damping*velocities[i*2];
-    //   forces[i*2] += f;
-    //   // little kick, up, or else particles get stuck on the bottom and mash together
-    //   forces[i*2+1] += 0.1*std::abs(f);
-    // }
+    if (x - radius <= (xShakerDisplacement + xShakerAmplitude)){
+      double mag = restoration*((xShakerDisplacement + xShakerAmplitude)+radius-x);
+      double f = std::abs(mag); //- mag*damping*velocities[i*2];
+      forces[i*2] += f;
+      // little kick, up, or else particles get stuck on the bottom and mash together
+      forces[i*2+1] += 0.1*std::abs(f);
+    }
+
+    if (x + radius >= Lx+xShakerDisplacement-xShakerAmplitude){
+      double mag = restoration*(x+radius-(Lx+xShakerDisplacement-xShakerAmplitude));
+      double f = -std::abs(mag);// + mag*damping*velocities[i*2];
+      forces[i*2] += f;
+      // little kick, up, or else particles get stuck on the bottom and mash together
+      forces[i*2+1] += 0.1*std::abs(f);
+    }
+
     if (y - parameters[2*i] <= (shakerDisplacement + shakerAmplitude)){
       double mag = (shakerDisplacement + shakerAmplitude)+parameters[2*i]-y;
-      double f = std::abs(mag)*restoration - std::abs(mag)*damping*velocities[i*2+1];
+      double f = 10*std::abs(mag)*restoration - damping*velocities[i*2+1];
       forces[i*2+1] += f;
     }
 
@@ -216,18 +308,27 @@ void ParticleSystem::step(){
     velocities[i*2+1] = vy/dt;
 
     double ux = 0.0; double uy = 0.0;
+    double newX = state[i*3]; double newY = state[i*3+1];
     double ang = state[i*3+2];
     bool flag = false;
 
     // kill the particles movement if it's outside the box
     if (state[i*3]-parameters[2*i] < 0 || state[i*3]+parameters[2*i] > Lx){
-      ux = -1.0*vx;
+      ux = -0.5*vx;
       ang = std::atan2(vy,ux);
+
+      if (state[i*3]-parameters[2*i] < 0){
+        newX = parameters[2*i];
+      }
+      else{
+        newX = Lx-parameters[2*i];
+      }
+
       flag = true;
     }
 
     if (state[i*3+1]-parameters[2*i] < 0 || state[i*3+1]+parameters[2*i] > Ly){
-      uy = -1.0*vy;
+      uy = -0.5*vy;
       if (flag){
         ang = std::atan2(uy,ux);
       }
@@ -235,16 +336,22 @@ void ParticleSystem::step(){
         ang = std::atan2(uy,vx);
         flag = true;
       }
+      if (state[i*3+1]-parameters[2*i] < 0){
+        newY = parameters[2*i];
+      }
+      else{
+        newY = Ly-parameters[2*i];
+      }
     }
 
     if (flag){
       state[i*3+2] = ang;
-      state[i*3+1] += uy;
-      state[i*3] += ux;
+      state[i*3+1] = newY+uy;
+      state[i*3] = newX+ux;
     }
 
-    if (state[i*3] == 1.0){ state[i*3] -= 0.001;}
-    if (state[i*3+1] == 1.0){ state[i*3+1] -= 0.001;}
+    if (state[i*3] == Lx){ state[i*3] -= 0.001;}
+    if (state[i*3+1] == Ly){ state[i*3+1] -= 0.001;}
 
   }
 

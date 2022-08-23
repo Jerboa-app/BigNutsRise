@@ -32,10 +32,10 @@ public:
     double Lx = 0.5, double Ly = 1.0,
     uint64_t seed = clock()
   )
-  : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0),drag(0.0),
+  : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0),drag(0),
     rotationalDrag(.01),mass(1.0), momentOfInertia(0.01),
-    rotationalDiffusion(0.01),dt(dt),damping(100),restoration(1000000.0),
-    alpha(0.0),beta(1.0),shakerPeriod(1.0),shakerAmplitude(0.2),shakerTime(0.0),
+    rotationalDiffusion(0.01),dt(dt),collisionTime(10*dt),
+    alpha(0.0),beta(1.0),shakerPeriod(1.0),shakerAmplitude(radius),shakerTime(0.0),
     Lx(Lx), Ly(Ly)
   {
 
@@ -73,7 +73,24 @@ public:
         insert(cells[c],uint64_t(i));
       }
     }
+
+    setCoeffientOfRestitution(0.95);
+
     initialiseGL();
+  }
+
+  double reducedMass(float m1, float m2){
+      return 1.0 / (1.0/m1 + 1.0/m2);
+  }
+
+  double damping(float m1, float m2){
+      double meff = reducedMass(m1,m2);
+      return 2*meff*(-std::log(coefficientOfRestitution)/collisionTime);
+  }
+
+  double restoration(float m1, float m2){
+      double meff = reducedMass(m1,m2);
+      return meff/(collisionTime*collisionTime)*(std::log(coefficientOfRestitution)+M_PI*M_PI);
   }
 
   void applyForce(double fx, double fy);
@@ -100,6 +117,8 @@ public:
   uint64_t size(){
     return uint64_t(std::floor(state.size() / 3));
   }
+
+  double orderParameter();
 
   void randomiseRadii(double propBig){
     int nBig = std::floor(propBig*size());
@@ -136,6 +155,11 @@ public:
     if (p != shakerPeriod) {shakerTime = shakerTime*p/shakerPeriod;}
     shakerPeriod = p;
   }
+  double setShakerAmplitude(double a){
+    shakerAmplitude = a*radius;
+  }
+
+  void setCoeffientOfRestitution(double c);
   // GL public members
   void setProjection(glm::mat4 p);
   void draw(uint64_t frameId, float zoomLevel, float resX, float resY);
@@ -178,8 +202,17 @@ private:
 
   uint64_t nParticles;
 
-  double damping;
-  double restoration;
+  double coefficientOfRestitution;
+  double collisionTime;
+
+  double dampingSS; // small-small
+  double dampingBB; // big-big
+  double dampingSB;
+
+  double restorationSS;
+  double restorationBB;
+  double restorationSB;
+
   double alpha;
   double beta;
 

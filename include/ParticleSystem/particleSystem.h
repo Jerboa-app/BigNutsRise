@@ -23,6 +23,9 @@ std::uniform_real_distribution<double> U(0.0,1.0);
 std::normal_distribution<double> normal(0.0,1.0);
 
 class ParticleSystem{
+
+  friend class ParticleSystemRenderer;
+
 public:
 
   ParticleSystem(
@@ -75,8 +78,6 @@ public:
     }
 
     setCoeffientOfRestitution(0.95);
-
-    initialiseGL();
   }
 
   double reducedMass(float m1, float m2){
@@ -165,17 +166,6 @@ public:
   void draw(uint64_t frameId, float zoomLevel, float resX, float resY);
 
   ~ParticleSystem(){
-    // kill some GL stuff
-    glDeleteProgram(particleShader);
-    glDeleteProgram(shakerShader);
-
-    glDeleteBuffers(1,&offsetVBO);
-    glDeleteBuffers(1,&vertVBO);
-    glDeleteBuffers(1,&shakerVBO);
-
-    glDeleteVertexArrays(1,&vertVAO);
-    glDeleteVertexArrays(1,&shakerVAO);
-
     free(floatState);
   }
 
@@ -229,6 +219,8 @@ private:
   double shakerPeriod;
   double shakerAmplitude;
   double shakerTime;
+
+  float * floatState;
 
   void addParticle(double x, double y, double theta, double r, double m){
 
@@ -294,24 +286,6 @@ private:
     }
   }
 
-  // GL data members
-  float * floatState;
-  GLuint particleShader, offsetVBO, vertVAO, vertVBO;
-  glm::mat4 projection;
-
-  float vertices[3] = {0.0,0.0,0.0};
-
-  GLuint shakerShader, shakerVAO, shakerVBO;
-
-  float shakerVertices[6*2] = {
-     0.0, -1.0,
-     0.0,  0.0,
-     0.5,  0.0,
-     0.0, -1.0,
-     0.5, -1.0,
-     0.5, 0.0
-  };
-
   void resetLists();
   void insert(uint64_t next, uint64_t particle);
   void populateLists();
@@ -328,9 +302,6 @@ private:
   }
 
   void newTimeStepStates(double oldDt, double newDt);
-
-  // GL private members
-  void initialiseGL();
 };
 
 #endif

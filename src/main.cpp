@@ -16,6 +16,7 @@
 #include <shaders.h>
 
 #include <ParticleSystem/particleSystem.cpp>
+#include <ParticleSystem/particleSystemRenderer.cpp>
 #include <Text/textRenderer.cpp>
 #include <Text/popup.cpp>
 
@@ -82,6 +83,7 @@ int main(){
   uint8_t debug = 0;
 
   ParticleSystem particles(N,dt);
+  ParticleSystemRenderer pRender(N);
 
   sf::Clock clock;
   sf::Clock physClock, renderClock;
@@ -282,8 +284,9 @@ int main(){
 
     glm::mat4 proj = camera.getVP();
 
-    particles.setProjection(proj);
-    particles.draw(
+    pRender.setProjection(proj);
+    pRender.draw(
+      particles,
       frameId,
       camera.getZoomLevel(),
       resX,

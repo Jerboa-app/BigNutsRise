@@ -13,17 +13,17 @@ void ParticleSystem::resetLists(){
 void ParticleSystem::insert(uint64_t next, uint64_t particle){
   uint64_t i = next;
   while (list[i] != NULL_INDEX){
-    i = list[i];                                                                  // someone here!
+    i = list[i];
   }
-  list[i] = particle;                                                             // it's free realestate
+  list[i] = particle;
 }
 
 void ParticleSystem::populateLists(
 ){
   for (int i = 0; i < size(); i++){
-    uint64_t c = hash(i);                                                    // flat index for the particle's cell
+    uint64_t c = hash(i);
     if (cells[c] == NULL_INDEX){
-      cells[c] = uint64_t(i);                                                     // we are the head!
+      cells[c] = uint64_t(i);
     }
     else{
       insert(cells[c],uint64_t(i));
@@ -86,22 +86,22 @@ void ParticleSystem::cellCollisions(
   uint64_t b2
 ){
   if (a1 < 0 || a1 >= Nc || b1 < 0 || b1 >= Nc || a2 < 0 || a2 >= Nc || b2 < 0 || b2 >= Nc){
-    return;                                                                      // not a cell
+    return;
   }
   uint64_t p1 = cells[a1*Nc+b1];
   uint64_t p2 = cells[a2*Nc+b2];
 
   if (p1 == NULL_INDEX || p2 == NULL_INDEX){
-    return;                                                                      // nobody here!
+    return;
   }
 
   while (p1 != NULL_INDEX){
-    p2 = cells[a2*Nc+b2];                                                        // flat index
+    p2 = cells[a2*Nc+b2];
     while(p2 != NULL_INDEX){
-        handleCollision(p1,p2);                                                  // check this potential collision
-        p2 = list[p2];                                                           // p2 points to a new particle in the same box (or null)
+        handleCollision(p1,p2);
+        p2 = list[p2];
     }
-    p1 = list[p1];                                                               // p1 points to a new particle in the same box (or null)
+    p1 = list[p1];                                                              
   }
 }
 

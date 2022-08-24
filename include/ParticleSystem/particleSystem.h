@@ -197,11 +197,9 @@ private:
   float * floatState;
 
   void addParticle(double x, double y, double theta, double r, double m);
-
   void removeParticle(uint64_t i);
 
   // Cell Linked List Collisions detection
-
   void resetLists();
   void insert(uint64_t next, uint64_t particle);
   void populateLists();
@@ -215,6 +213,10 @@ private:
 
   uint64_t hash(uint64_t particle){
     uint64_t h = uint64_t(floor(state[particle*3]/deltax))*Nc + uint64_t(floor(state[particle*3+1]/deltay));
+    // a particle outside the box would normally crash the program
+    //  (segfault), if this happens there is no logic to get it back in currently
+    //  these cases happen due to numerical instability, so a smaller time step
+    //  will help! - pretty rare with defaults
     if (h < 0 || h > Nc*Nc){return 0;}
     return h;
   }

@@ -82,7 +82,9 @@ int main(){
 
   uint8_t debug = 0;
 
+  // the core simulation
   ParticleSystem particles(N,dt);
+  // handles rendering - separation of concerns
   ParticleSystemRenderer pRender(N);
 
   sf::Clock clock;
@@ -265,6 +267,7 @@ int main(){
 
     if (!pause){
 
+      // now for some very inelegant slider logic!
       int n = std::floor(particlesSlider.getPosition()*float(N));
       particlesSlider.setLabel("Particles: "+fixedLengthNumber(n,4));
       if (n < particles.size()){
@@ -370,6 +373,7 @@ int main(){
       );
     }
 
+    // more inelegant slider drawing
     shakerSlider.draw(
       textRenderer,
       OD

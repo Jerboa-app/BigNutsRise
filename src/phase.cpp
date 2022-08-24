@@ -1,9 +1,52 @@
+/*
+
+	This file demonstrates using MPI to scan trhough some parameters,
+		to be honest without access to 100's of cpus you'll struggle to
+		get much out of this.
+
+		The following Julia code would parse the output file
+		(e.g got from: mpirun -np 4 phase > output.txt)
+		"output.txt" for you:
+
+				nP = 20
+				nA = 20
+				nC = 10
+
+				O = zeros(nP,nA,nC)
+
+				d = readlines("output.txt");
+				@show d[1]
+				d = d[2:end]
+
+				Ps = unique(map(x->parse(Float64,x[2]),split.(d,",")))
+				As = unique(map(x->parse(Float64,x[3]),split.(d,",")))
+				Cs = unique(map(x->parse(Float64,x[1]),split.(d,",")));
+
+				pac = (y) -> (
+				    parse(Float64,split(y,",")[2]),
+				    parse(Float64,split(y,",")[3]),
+				    parse(Float64,split(y,",")[1])
+				)
+
+				o = (y) -> parse(Float64,split(y,",")[4])
+
+				index = (pac) -> (
+				    findall(x->x.==pac[1],Ps)[1],
+				    findall(x->x.==pac[2],As)[1],
+				    findall(x->x.==pac[3],Cs)[1]
+				)
+
+				for l in d
+				    O[index(pac(l))...] = o(l)
+				end
+
+*/
 #include <mpi.h>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 
-#include "particleSystem.cpp"
+#include <ParticleSystem/particleSystem.cpp>
 
 #include <chrono>
 #include <random>
@@ -33,6 +76,9 @@ int nAs = 20;
 int nCs = 10;
 
 struct job {
+	job(double p, double a, double c)
+	: period(p), amplitude(a), cor(c)
+	{}
 		double period;
 		double amplitude;
 		double cor;
@@ -125,11 +171,6 @@ int main(){
       }
     }
     std::cout << C << ", " << particles.getshakerPeriod() << ", " << particles.getShakerAmplitude() << ", " << particles.orderParameter() << "\n";
-    // double m = 0.0;
-    // for (int k = 0; k < 60; k++){
-    //   m += deltas[k];
-    // }
-    // std::cout << "Frame time: " << m / 60.0 << " ms\n";
   }
 
   MPI_Finalize();

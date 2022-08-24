@@ -9,7 +9,7 @@ public:
 
   Slider(float x, float y, float w, float h, std::string l)
   : xPosition(x), yPosition(y), width(w), height(h),
-  position(0.0), label(l)
+  position(0.0), label(l), dragging(false)
   {
     initialiseGL();
   }
@@ -24,11 +24,13 @@ public:
 
   float getPosition(){return position;}
 
-  float setPosition(float p){
+  void setPosition(float p){
     if(p>1){position=1;}
     else if (p<0){position=0;}
     else{position=p;}
   }
+
+  void setLabel(std::string s){label=s;}
 
   bool clicked(float x, float y);
   void drag(float x, float y);

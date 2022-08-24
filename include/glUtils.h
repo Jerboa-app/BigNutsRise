@@ -1,54 +1,66 @@
 #ifndef GLUTILS_H
 #define GLUTILS_H
 
+#include <exception>
+
+class GLRuntimeException: public std::exception {
+public:
+    GLRuntimeException(std::string msg)
+    : msg(msg)
+    {}
+private:
+    virtual const char * what() const throw(){
+        return msg.c_str();
+    }
+    std::string msg;
+};
+
 // print buffer status errors
-GLuint glBufferStatus(const std::string c = ""){
+GLuint glBufferStatus(const std::string msg = ""){
     GLuint e = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (e != GL_FRAMEBUFFER_COMPLETE){std::cout << c; return e;}
     switch(e){
         case GL_FRAMEBUFFER_UNDEFINED:
-        std::cout << " GLERROR: GL_FRAMEBUFFER_UNDEFINED\n";
+        throw( GLRuntimeException(msg+" GLERROR: GL_FRAMEBUFFER_UNDEFINED\n") );
             break;
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-            std::cout << " GLERROR: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n") );
             break;
 
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            std::cout << " GLERROR: GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n") );
             break;
 
         case GL_FRAMEBUFFER_UNSUPPORTED:
-            std::cout << " GLERROR: GL_FRAMEBUFFER_UNSUPPORTED\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_FRAMEBUFFER_UNSUPPORTED\n") );
             break;
 
         case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-            std::cout << " GLERROR: GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n") );
             break;
     }
     return e;
 }
 
 // print gl error codes
-GLuint glError(const std::string c = ""){
+GLuint glError(const std::string msg = ""){
     GLuint e = glGetError();
-    if (e != GL_NO_ERROR){std::cout << c;}
     switch(e){
         case GL_NO_ERROR:
          break;
         case GL_INVALID_ENUM:
-            std::cout << " GL_INVALID_ENUM\n";
+            throw( GLRuntimeException(msg+" GL_INVALID_ENUM\n") );
             break;
         case GL_INVALID_VALUE:
-            std::cout << " GLERROR: GL_INVALID_VALUE\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_INVALID_VALUE\n") );
             break;
         case GL_INVALID_OPERATION:
-            std::cout << " GLERROR: GL_INVALID_OPERATION\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_INVALID_OPERATION\n") );
             break;
         case GL_OUT_OF_MEMORY:
-            std::cout << " GLERROR: GL_OUT_OF_MEMORY\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_OUT_OF_MEMORY\n") );
             break;
         case GL_INVALID_FRAMEBUFFER_OPERATION:
-            std::cout << " GLERROR: GL_INVALID_FRAMEBUFFER_OPERATION\n";
+            throw( GLRuntimeException(msg+" GLERROR: GL_INVALID_FRAMEBUFFER_OPERATION\n") );
             break;
     }
     return e;
@@ -70,7 +82,7 @@ void compileShader(GLuint & shaderProgram, const char * vert, const char * frag)
     if(!success)
     {
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+        throw( GLRuntimeException( std::string("GLSL (VERTEX) ERROR: \n") + infoLog + "\n") );
     }
 
     GLuint fragmentShader;
@@ -83,7 +95,7 @@ void compileShader(GLuint & shaderProgram, const char * vert, const char * frag)
     if(!success)
     {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        throw( GLRuntimeException( std::string("GLSL (FRAGMENT) ERROR: \n") + infoLog +"\n") );
     }
 
     glAttachShader(shaderProgram,vertexShader);
@@ -94,7 +106,7 @@ void compileShader(GLuint & shaderProgram, const char * vert, const char * frag)
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if(!success) {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::LINK::COMPILATION_FAILED\n" << infoLog << std::endl;
+        throw( GLRuntimeException( std::string("GLSL (LINK) ERROR: \n") + infoLog + "\n") );
     }
 }
 

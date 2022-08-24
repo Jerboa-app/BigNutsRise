@@ -13,17 +13,17 @@ void ParticleSystem::resetLists(){
 void ParticleSystem::insert(uint64_t next, uint64_t particle){
   uint64_t i = next;
   while (list[i] != NULL_INDEX){
-    i = list[i];                                                                  // someone here!
+    i = list[i];
   }
-  list[i] = particle;                                                             // it's free realestate
+  list[i] = particle;
 }
 
 void ParticleSystem::populateLists(
 ){
-  for (int i = 0; i < nParticles; i++){
-    uint64_t c = hash(i);                                                    // flat index for the particle's cell
+  for (int i = 0; i < size(); i++){
+    uint64_t c = hash(i);
     if (cells[c] == NULL_INDEX){
-      cells[c] = uint64_t(i);                                                     // we are the head!
+      cells[c] = uint64_t(i);
     }
     else{
       insert(cells[c],uint64_t(i));
@@ -51,7 +51,22 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
 
     ddot = vx*nx+vy*ny;
 
-    mag = -damping*ddot*std::pow(d,alpha)-restoration*std::pow(d,beta);
+    double damping, restoration;
+
+    if (parameters[i*2+1] == mass && parameters[j*2+1] == mass){
+      damping = dampingBB; restoration = restorationBB;
+    }
+    else if (parameters[i*2+1] == mass && parameters[j*2+1] < mass){
+      damping = dampingSB; restoration = restorationSB;
+    }
+    if (parameters[i*2+1] < mass && parameters[j*2+1] == mass){
+      damping = dampingSB; restoration = restorationSB;
+    }
+    if (parameters[i*2+1] < mass && parameters[j*2+1] < mass){
+      damping = dampingSS; restoration = restorationSS;
+    }
+
+    mag = -damping*ddot-restoration*std::pow(d,beta);
 
     fx = mag*nx;
     fy = mag*ny;
@@ -71,34 +86,98 @@ void ParticleSystem::cellCollisions(
   uint64_t b2
 ){
   if (a1 < 0 || a1 >= Nc || b1 < 0 || b1 >= Nc || a2 < 0 || a2 >= Nc || b2 < 0 || b2 >= Nc){
-    return;                                                                      // not a cell
+    return;
   }
   uint64_t p1 = cells[a1*Nc+b1];
   uint64_t p2 = cells[a2*Nc+b2];
 
   if (p1 == NULL_INDEX || p2 == NULL_INDEX){
-    return;                                                                      // nobody here!
+    return;
   }
 
   while (p1 != NULL_INDEX){
-    p2 = cells[a2*Nc+b2];                                                        // flat index
+    p2 = cells[a2*Nc+b2];
     while(p2 != NULL_INDEX){
-        handleCollision(p1,p2);                                                  // check this potential collision
-        p2 = list[p2];                                                           // p2 points to a new particle in the same box (or null)
+        handleCollision(p1,p2);
+        p2 = list[p2];
     }
-    p1 = list[p1];                                                               // p1 points to a new particle in the same box (or null)
+    p1 = list[p1];
   }
 }
 
+double ParticleSystem::orderParameter(){
+  double step = radius;
+  int nl = 0;
+  int ns = 0;
+
+  for (int i = 0; i < size(); i++){
+    if (parameters[i*2] == radius){
+      nl += 1;
+    }
+    else{
+      ns += 1;
+    }
+  }
+
+  double mu = nl / float(nl+ns);
+  double y = 0.0;
+  double sigma = 0.0;
+  double A = 0.0;
+  while (y < Ly){
+    int l = 0;
+    int s = 0;
+    for (int i = 0; i < size(); i++){
+      if (state[i*3+1] >= y && state[i*3+1] <= y+step){
+        if (parameters[i*2] == radius){
+          l += 1;
+        }
+        else{
+          s += 1;
+        }
+      }
+    }
+
+    if (l==0 && s==0){
+      y+=step; continue;
+    }
+
+    double fi = l / float(l+s);
+    double Ai = l+s;
+    sigma += Ai*(fi-mu)*(fi-mu);
+    A += Ai;
+    y += step;
+  }
+  double muc = (1.0-mu)*(1.0-mu);
+  return (sigma/A)/muc;
+}
+
 void ParticleSystem::applyForce(double fx, double fy){
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     forces[i*2] += fx;
     forces[i*2+1] += fy;
   }
 }
 
+void ParticleSystem::setCoeffientOfRestitution(double c){
+
+  if (coefficientOfRestitution == c){
+    return;
+  }
+
+  coefficientOfRestitution = c;
+
+  dampingBB = damping(mass,mass);
+  restorationBB = restoration(mass,mass);
+
+  dampingSS = damping(mass/4.0,mass/4.0);
+  restorationSS = restoration(mass/4.0,mass/4.0);
+
+  dampingSB = damping(mass,mass/4.0);
+  restorationSB = restoration(mass,mass/4.0);
+}
+
 void ParticleSystem::newTimeStepStates(double oldDt, double newDt){
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     for (int k = 0; k < 3; k++){
       double delta = state[i*3+k]-lastState[i*3+k];
       lastState[i*3+k] = state[i*3+k]-(newDt/oldDt)*delta;
@@ -136,19 +215,25 @@ void ParticleSystem::step(){
   double br = 1.0 / (1.0 + cr);
   double ar = (1.0-cr)*br;
 
-  double shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
+  //std::cout << shakerPeriod << "\n";
+  //shakerDisplacement += shakerAmplitude*2.0*M_PI/shakerPeriod * std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
+  shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
+  double xShakerAmplitude = 0.05*shakerAmplitude;
+  double xShakerPeriod = 0.1*shakerPeriod;
+  double xShakerDisplacement = xShakerAmplitude*std::cos(2.0*M_PI*shakerTime/(xShakerPeriod));
 
-  glUseProgram(shakerShader);
+  for (int i = 0; i < size(); i++){
 
-  glUniform2f(
-    glGetUniformLocation(shakerShader,"offsets"),
-    shakerDisplacement+shakerAmplitude,
-    shakerDisplacement-shakerAmplitude
-  );
+    double damping, restoration;
 
-  for (int i = 0; i < nParticles; i++){
+    if (parameters[i*2+1] == mass){
+      damping = dampingBB; restoration = restorationBB;
+    }
+    else{
+      damping = dampingSS; restoration = restorationSS;
+    }
 
-    double ct = (drag*dt)/(2.0*parameters[i*2]);
+    double ct = (drag*dt)/(2.0*parameters[i*2+1]);
     double bt = 1.0 / (1.0 + ct);
     double at = (1.0-ct)*bt;
 
@@ -177,29 +262,33 @@ void ParticleSystem::step(){
     //
     // mag = -damping*ddot*std::pow(d,alpha)-restoration*std::pow(d,beta);
 
-    if (x - radius <= (shakerDisplacement + shakerAmplitude)){
-      double mag = restoration*((shakerDisplacement + shakerAmplitude)+radius-x);
-      double f = std::abs(mag); //- mag*damping*velocities[i*2];
-      forces[i*2] += f;
-      // little kick, up, or else particles get stuck on the bottom and mash together
-      forces[i*2+1] += 0.1*std::abs(f);
-    }
+    // if (x - radius <= (xShakerDisplacement + xShakerAmplitude)){
+    //   double mag = restoration*((xShakerDisplacement + xShakerAmplitude)+radius-x);
+    //   double f = std::abs(mag); //- mag*damping*velocities[i*2];
+    //   forces[i*2] += f;
+    //   // little kick, up, or else particles get stuck on the bottom and mash together
+    //   forces[i*2+1] += 0.1*std::abs(f);
+    // }
+    //
+    // if (x + radius >= Lx+xShakerDisplacement-xShakerAmplitude){
+    //   double mag = restoration*(x+radius-(Lx+xShakerDisplacement-xShakerAmplitude));
+    //   double f = -std::abs(mag);// + mag*damping*velocities[i*2];
+    //   forces[i*2] += f;
+    //   // little kick, up, or else particles get stuck on the bottom and mash together
+    //   forces[i*2+1] += 0.1*std::abs(f);
+    // }
 
-    if (x + radius >= 1.0+shakerDisplacement-shakerAmplitude){
-      double mag = restoration*(x+radius-(1.0+shakerDisplacement-shakerAmplitude));
-      double f = -std::abs(mag);// + mag*damping*velocities[i*2];
-      forces[i*2] += f;
-      // little kick, up, or else particles get stuck on the bottom and mash together
-      forces[i*2+1] += 0.1*std::abs(f);
+    if (y - parameters[2*i] <= (shakerDisplacement + shakerAmplitude)){
+      double mag = (shakerDisplacement + shakerAmplitude)+parameters[2*i]-y;
+      double f = 10*std::abs(mag)*restoration - damping*velocities[i*2+1];
+      forces[i*2+1] += f;
     }
 
     double ax = drag*speed*cos(theta)+forces[i*2];
-    double ay = drag*speed*sin(theta)+forces[i*2+1]-9.81*parameters[i*2];
+    double ay = drag*speed*sin(theta)+forces[i*2+1]-9.81*parameters[i*2+1];
 
-    //if(i==0){std::cout << std::setprecision(20) << (bt*dtdt/parameters[i*2];)*ay << ", " << 2.0*bt*y << ", " << at*yp << "\n";}
-    state[i*3] = 2.0*bt*x - at*xp + (bt*dtdt/parameters[i*2])*ax;
-    state[i*3+1] = 2.0*bt*y - at*yp + (bt*dtdt/parameters[i*2])*ay;
-    //state[i*3+2] = 2.0*br*theta - ar*thetap + (br*dt/(2.0*momentOfInertia))*(noise[i*2]+noise[i*2+1])*dt*rotationalDrag*D;
+    state[i*3] = 2.0*bt*x - at*xp + (bt*dtdt/parameters[i*2+1])*ax;
+    state[i*3+1] = 2.0*bt*y - at*yp + (bt*dtdt/parameters[i*2+1])*ay;
 
     lastState[i*3] = x;
     lastState[i*3+1] = y;
@@ -212,18 +301,27 @@ void ParticleSystem::step(){
     velocities[i*2+1] = vy/dt;
 
     double ux = 0.0; double uy = 0.0;
+    double newX = state[i*3]; double newY = state[i*3+1];
     double ang = state[i*3+2];
     bool flag = false;
 
     // kill the particles movement if it's outside the box
-    if (state[i*3]-radius < 0 || state[i*3]+radius > 1.0){
-      ux = -vx;
+    if (state[i*3]-parameters[2*i] < 0 || state[i*3]+parameters[2*i] > Lx){
+      ux = -0.5*vx;
       ang = std::atan2(vy,ux);
+
+      if (state[i*3]-parameters[2*i] < 0){
+        newX = parameters[2*i];
+      }
+      else{
+        newX = Lx-parameters[2*i];
+      }
+
       flag = true;
     }
 
-    if (state[i*3+1]-radius < 0 || state[i*3+1]+radius > 1.0){
-      uy = -1.5*vy;
+    if (state[i*3+1]-parameters[2*i] < 0 || state[i*3+1]+parameters[2*i] > Ly){
+      uy = -0.5*vy;
       if (flag){
         ang = std::atan2(uy,ux);
       }
@@ -231,23 +329,26 @@ void ParticleSystem::step(){
         ang = std::atan2(uy,vx);
         flag = true;
       }
+      if (state[i*3+1]-parameters[2*i] < 0){
+        newY = parameters[2*i];
+      }
+      else{
+        newY = Ly-parameters[2*i];
+      }
     }
 
     if (flag){
       state[i*3+2] = ang;
-      state[i*3+1] += uy;
-      state[i*3] += ux;
-
-      lastState[i*3+2] = ang;
-      lastState[i*3+1] = state[i*3+1]-0.5*uy;
-      lastState[i*3] = state[i*3]-0.5*ux;
+      state[i*3+1] = newY+uy;
+      state[i*3] = newX+ux;
     }
 
-    if (state[i*3] == 1.0){ state[i*3] -= 0.001;}
-    if (state[i*3+1] == 1.0){ state[i*3+1] -= 0.001;}
+    if (state[i*3] == Lx){ state[i*3] -= 0.001;}
+    if (state[i*3+1] == Ly){ state[i*3+1] -= 0.001;}
+
   }
 
-  for (int i = 0; i < nParticles; i++){
+  for (int i = 0; i < size(); i++){
     forces[i*2] = 0.0;
     forces[i*2+1] = 0.0;
 
@@ -260,131 +361,126 @@ void ParticleSystem::step(){
   tic = clock();
 }
 
-void ParticleSystem::setProjection(glm::mat4 p){
-  projection = p;
-  glUseProgram(particleShader);
-  glUniformMatrix4fv(
-    glGetUniformLocation(particleShader,"proj"),
-    1,
-    GL_FALSE,
-    &projection[0][0]
-  );
+void ParticleSystem::addParticle(){
+  int i = size();
 
-  glUseProgram(shakerShader);
-  glUniformMatrix4fv(
-    glGetUniformLocation(shakerShader,"proj"),
-    1,
-    GL_FALSE,
-    &projection[0][0]
-  );
+  if (i == nParticles){return;}
+
+  double x = U(generator)*(Lx-2*radius)+radius;
+  double y = U(generator)*(Ly-2*radius)+radius;
+  double theta = U(generator)*2.0*3.14;
+
+  double r = i%2 == 0 ? radius : radius / radiusRatio;
+  double m = i%2 == 0 ? mass : mass / massRatio;
+
+  addParticle(x,y,theta,r,m);
 }
 
-void ParticleSystem::initialiseGL(){
-  // a buffer of particle states
-  glGenBuffers(1,&offsetVBO);
-  glBindBuffer(GL_ARRAY_BUFFER,offsetVBO);
-  glBufferData(GL_ARRAY_BUFFER,sizeof(float)*nParticles*4,&floatState[0],GL_DYNAMIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
+void ParticleSystem::randomiseRadii(double propBig){
+  int nBig = std::floor(propBig*size());
+  int nSmall = size()-nBig;
+  for (int i = 0; i < size(); i++){
 
-  // setup an array object
-  glGenVertexArrays(1,&vertVAO);
-  glGenBuffers(1,&vertVBO);
-  glBindVertexArray(vertVAO);
-  glBindBuffer(GL_ARRAY_BUFFER,vertVBO);
-  glBufferData(GL_ARRAY_BUFFER,sizeof(vertices),vertices,GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  // place dummy vertices for instanced particles
-  glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),(void*)0);
+    bool coin = U(generator) > 0.5;
 
-  glEnableVertexAttribArray(1);
-  glBindBuffer(GL_ARRAY_BUFFER, offsetVBO);
-  // place states
-  glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,4*sizeof(float),(void*)0);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
-  glVertexAttribDivisor(1,1);
+    if (nSmall == 0 && nBig > 0){
+      parameters[i*2] = radius;
+      parameters[i*2+1] = mass;
+      nBig--;
+    }
+    else if (nBig > 0 && coin){
+      parameters[i*2] = radius;
+      parameters[i*2+1] = mass;
+      nBig--;
+    }
+    else if (nSmall > 0){
+      parameters[i*2] = radius/radiusRatio;
+      parameters[i*2+1] = mass/massRatio;
+      nSmall--;
+    }
 
-  glError("initialised particles");
+    floatState[i*4+3] = parameters[i*2];
 
-  particleShader = glCreateProgram();
-  compileShader(particleShader,particleVertexShader,particleFragmentShader);
-  glUseProgram(particleShader);
-
-  glUniformMatrix4fv(
-    glGetUniformLocation(particleShader,"proj"),
-    1,
-    GL_FALSE,
-    &projection[0][0]
-  );
-
-  // shaker
-
-  shakerShader = glCreateProgram();
-  compileShader(shakerShader,shakerVertexShader,shakerFragmentShader);
-  glUseProgram(shakerShader);
-
-  glUniformMatrix4fv(
-    glGetUniformLocation(shakerShader,"proj"),
-    1,
-    GL_FALSE,
-    &projection[0][0]
-  );
-
-  glUniform4f(
-    glGetUniformLocation(shakerShader,"u_colour"),
-    0,0,0,0.33
-  );
-
-  glGenVertexArrays(1,&shakerVAO);
-  glGenBuffers(1,&shakerVBO);
-  glBindVertexArray(shakerVAO);
-  glBindBuffer(GL_ARRAY_BUFFER,shakerVBO);
-  glBufferData(GL_ARRAY_BUFFER,sizeof(float)*6*2,shakerVertices,GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,2*sizeof(float),0);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
-  glBindVertexArray(0);
-
-  glError();
-  glBufferStatus();
-
-
+  }
 }
 
-void ParticleSystem::draw(
-  uint64_t frameId,
-  float zoomLevel,
-  float resX,
-  float resY
+void ParticleSystem::changeRatio(){
+  std::cout << massRatio << ", " << radiusRatio << "\n";
+  for (int i = 0; i < size(); i++){
+    if (parameters[i*2+1] != mass){
+      parameters[i*2+1] = mass / massRatio;
+      parameters[i*2] = radius / radiusRatio;
+    }
+    floatState[i*4+3] = parameters[i*2];
+  }
+}
+
+void ParticleSystem::addParticle(
+  double x,
+  double y,
+  double theta,
+  double r,
+  double m
 ){
-  glUseProgram(particleShader);
 
-  glUniform1f(
-    glGetUniformLocation(particleShader,"zoom"),
-    zoomLevel
-  );
+  int i = size();
 
-  glUniform1f(
-    glGetUniformLocation(particleShader,"scale"),
-    resX*2.0
-  );
+  state.push_back(x);
+  state.push_back(y);
+  state.push_back(theta);
 
-  glBindBuffer(GL_ARRAY_BUFFER,offsetVBO);
-  glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)*nParticles*4,&floatState[0]);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
+  floatState[i*4] = x;
+  floatState[i*4+1] = y;
+  floatState[i*4+2] = theta;
+  floatState[i*4+3] = r;
 
-  glError("particles buffers");
+  lastState.push_back(x);
+  lastState.push_back(y);
+  lastState.push_back(theta);
 
-  glBindVertexArray(vertVAO);
-  glDrawArraysInstanced(GL_POINTS,0,1,size());
-  glBindVertexArray(0);
+  parameters.push_back(r);
+  parameters.push_back(m);
 
-  glError("draw particles");
+  forces.push_back(0.0);
+  forces.push_back(0.0);
 
-  glUseProgram(shakerShader);
+  velocities.push_back(0.0);
+  velocities.push_back(0.0);
 
-  glBindVertexArray(shakerVAO);
-  glDrawArraysInstanced(GL_TRIANGLES,0,6,2);
-  glBindVertexArray(0);
+  noise.push_back(0.0);
+  noise.push_back(0.0);
+}
 
-  glError("draw shaker");
+void ParticleSystem::removeParticle(uint64_t i){
+  if (state.size() >= 3*i){
+    state.erase(
+      state.begin()+3*i,
+      state.begin()+3*i+3
+    );
+
+    lastState.erase(
+      lastState.begin()+3*i,
+      lastState.begin()+3*i+3
+    );
+
+    parameters.erase(
+      parameters.begin()+2*i,
+      parameters.begin()+2*i+2
+    );
+
+    forces.erase(
+      forces.begin()+2*i,
+      forces.begin()+2*i+2
+    );
+
+    velocities.erase(
+      velocities.begin()+2*i,
+      velocities.begin()+2*i+2
+    );
+
+    noise.erase(
+      noise.begin()+2*i,
+      noise.begin()+2*i+2
+    );
+  }
 }

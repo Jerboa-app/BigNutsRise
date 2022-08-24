@@ -3,7 +3,7 @@ project(Jerboa)
 
 set(BUILD_SHARED_LIBRARY FALSE)
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3")
 
 set(SFML_STATIC_LIBRARIES TRUE)
@@ -24,8 +24,11 @@ find_package(OpenGL REQUIRED)
 find_package(SFML 2.5.1 COMPONENTS system window graphics audio REQUIRED)
 include_directories(include ${OPENGL_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
 
-file(GLOB SOURCES "src/*.cpp")
-
-add_executable(Jerboa ${SOURCES})
+add_executable(Jerboa src/main.cpp)
 
 target_link_libraries(Jerboa sfml-system sfml-window sfml-graphics sfml-audio X11 ${FREETYPE_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
+
+find_package(MPI)
+include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+add_executable(phase src/phase.cpp)
+target_link_libraries(phase ${MPI_C_LIBRARIES})

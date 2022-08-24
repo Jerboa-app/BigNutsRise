@@ -4,3 +4,7 @@ CMakeFiles/*
 cmake_install.cmake
 Makefile
 CMakeCache.txt
+*.ipynb
+.ipynb_checkpoints
+phase
+Jerboa

@@ -179,17 +179,6 @@ void ParticleSystemRenderer::draw(
   if (trackedParticle != NULL_INDEX){
     glUseProgram(trackShader);
 
-    // float oldx = track[0]; float oldy = track[1];
-    // for (int t = 1; t < trackLength-1; t++){
-    //   float x = track[t*3]; float y = track[t*3+1];
-    //   track[t*3] = oldx;
-    //   track[t*3+1] = oldy;
-    //   oldx = x; oldy = y;
-    // }
-    //
-    // track[0] = p.floatState[trackedParticle*4];
-    // track[1] = p.floatState[trackedParticle*4+1];
-
     updatedTrack(p);
 
     glBindBuffer(GL_ARRAY_BUFFER,trackVBO);
@@ -218,7 +207,7 @@ void ParticleSystemRenderer::updatedTrack(ParticleSystem & p){
 
     track[0] = p.floatState[trackedParticle*4];
     track[1] = p.floatState[trackedParticle*4+1];
-    
+
   }
 }
 
@@ -226,7 +215,6 @@ void ParticleSystemRenderer::beginTracking(ParticleSystem & p, uint64_t i){
   if (i == trackedParticle){return;}
 
   trackedParticle = i;
-  std::cout << i << "\n";
   for (int t = 0; t < trackLength; t++){
     track[t*3] = p.floatState[trackedParticle*4];
     track[t*3+1] = p.floatState[trackedParticle*4+1];
@@ -242,7 +230,6 @@ void ParticleSystemRenderer::click(ParticleSystem & p, float x, float y){
     double ry = p.state[i*3+1]-y;
     double dd = rx*rx+ry*ry;
     if (dd < p.parameters[i*2]*p.parameters[i*2]){
-      std::cout << i << "\n";
       return beginTracking(p,i);
     }
   }

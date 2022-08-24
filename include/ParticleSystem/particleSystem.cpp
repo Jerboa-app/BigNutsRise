@@ -101,7 +101,7 @@ void ParticleSystem::cellCollisions(
         handleCollision(p1,p2);
         p2 = list[p2];
     }
-    p1 = list[p1];                                                              
+    p1 = list[p1];
   }
 }
 
@@ -147,8 +147,8 @@ double ParticleSystem::orderParameter(){
     A += Ai;
     y += step;
   }
-
-  return (sigma/A)/mu;
+  double muc = (1.0-mu)*(1.0-mu);
+  return (sigma/A)/muc;
 }
 
 void ParticleSystem::applyForce(double fx, double fy){

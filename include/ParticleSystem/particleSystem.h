@@ -211,6 +211,10 @@ private:
     uint64_t b2
   );
 
+  uint64_t hash(float x, float y){
+    return uint64_t(floor(x/deltax))*Nc + uint64_t(floor(y/deltay));
+  }
+
   uint64_t hash(uint64_t particle){
     uint64_t h = uint64_t(floor(state[particle*3]/deltax))*Nc + uint64_t(floor(state[particle*3+1]/deltay));
     // a particle outside the box would normally crash the program

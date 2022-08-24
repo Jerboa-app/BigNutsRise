@@ -53,7 +53,7 @@ void speedPopUp(Popup & popups){
       "Speed: "+pos+" %",
       3.0,
       resX-256.,
-      resY-64*6,
+      resY-64*8,
       glm::vec3(0.0,0.0,0.0),
       "speed"
     )
@@ -230,6 +230,8 @@ int main(){
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
 
+        pRender.click(particles,worldPos.x,worldPos.y);
+
         oldMouseX = pos.x;
         oldMouseY = pos.y;
       }
@@ -312,9 +314,9 @@ int main(){
       restitutionSlider.setLabel("Coef. Restitution: "+fixedLengthNumber(val,4));
       particles.setTimeStep(dt*speed);
 
-
       for (int s = 0; s < subSamples; s++){
         particles.step();
+        pRender.updatedTrack(particles);
       }
     }
 

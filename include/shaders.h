@@ -1,6 +1,27 @@
 #ifndef SHADERS_H
 #define SHADERS_H
 
+const char * trackVertexShader = "#version 330 core\n"
+  "layout(location=0) in vec3 a_position;\n"
+  "uniform mat4 proj; uniform float time;\n"
+  "out float alpha;\n"
+  "void main(){\n"
+    "gl_Position = proj*vec4(a_position.xy,0.0,1.0);\n"
+    "gl_PointSize = 2.0;\n"
+    "alpha = a_position.z/time;"
+  "}";
+
+const char * trackFragmentShader = "#version 330 core\n"
+  "out vec4 colour; in float alpha;\n"
+  "void main(){"
+  " vec2 c = 2.0*gl_PointCoord-1.0;\n"
+  " float d = length(c);\n"
+  // bit of simple AA
+  " float a = 1.0-smoothstep(0.99,1.01,d);\n"
+  " colour = vec4(0.0,0.0,0.0,alpha);\n"
+  " if (colour.a == 0.0){discard;}"
+  "}";
+
 const char * shakerVertexShader = "#version 330 core\n"
   "layout(location=0) in vec2 a_position;\n"
   "\n"
@@ -56,17 +77,15 @@ const char * particleVertexShader = "#version 330 core\n"
   "precision highp float;\n"
   "layout(location = 0) in vec3 a_position;\n"
   "layout(location = 1) in vec4 a_offset;\n"
-  "float poly(float x, vec4 param){return clamp(x*param.x+pow(x,2.0)*param.y+"
-  " pow(x,3.0)*param.z+param.w,0.0,1.0);\n}"
-  "vec4 cmap(float t){\n"
-  " return vec4( poly(t,vec4(1.2,-8.7,7.6,0.9)), poly(t,vec4(5.6,-13.4,7.9,0.2)), poly(t,vec4(-7.9,16.0,-8.4,1.2)), 1.0 );}"
   "uniform mat4 proj; uniform float scale; uniform float zoom;\n"
+  "uniform int tracked;\n"
   "out vec4 o_colour;\n"
   "void main(){\n"
   " vec4 pos = proj*vec4(a_offset.xy,0.0,1.0);\n"
   " gl_Position = vec4(a_position.xy+pos.xy,0.0,1.0);\n"
   " gl_PointSize = a_offset.w*scale*zoom;\n"
-  " o_colour = cmap(mod(a_offset.z,2.0*PI)/(2.0*PI));\n"
+  "if (tracked == gl_InstanceID){o_colour = vec4(0.0,0.0,1.0,1.0);}"
+  "else{ o_colour = vec4(1.0,0.0,0.0,1.0); }\n"
   "}";
 const char * particleFragmentShader = "#version 330 core\n"
   "in vec4 o_colour; out vec4 colour;\n"
@@ -75,7 +94,7 @@ const char * particleFragmentShader = "#version 330 core\n"
   " float d = length(c);\n"
   // bit of simple AA
   " float alpha = 1.0-smoothstep(0.99,1.01,d);\n"
-  " colour = vec4(1.0,0.0,0.0,alpha);\n"
+  " colour = vec4(o_colour.rgb,alpha);\n"
   " if (colour.a == 0.0){discard;}"
   "}";
 

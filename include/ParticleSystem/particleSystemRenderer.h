@@ -3,9 +3,14 @@
 
 class ParticleSystemRenderer {
 public:
-  ParticleSystemRenderer(int sizeHint)
+  ParticleSystemRenderer(int sizeHint, int trackLength = 60*100)
   : nParticles(sizeHint)
   {
+
+    trackedParticle = NULL_INDEX;
+    track = new float [trackLength*3];
+    this->trackLength = trackLength;
+
     initialiseGL();
   }
 
@@ -16,14 +21,23 @@ public:
     // kill some GL stuff
     glDeleteProgram(particleShader);
     glDeleteProgram(shakerShader);
+    glDeleteProgram(trackShader);
 
     glDeleteBuffers(1,&offsetVBO);
     glDeleteBuffers(1,&vertVBO);
     glDeleteBuffers(1,&shakerVBO);
+    glDeleteBuffers(1,&trackVBO);
 
     glDeleteVertexArrays(1,&vertVAO);
     glDeleteVertexArrays(1,&shakerVAO);
+    glDeleteVertexArrays(1,&trackVAO);
+
+    free(track);
   }
+
+  void click(ParticleSystem & p, float x, float y);
+  void beginTracking(ParticleSystem & p, uint64_t i);
+  void updatedTrack(ParticleSystem & p);
 
 private:
   int nParticles;
@@ -44,6 +58,12 @@ private:
      0.5, -1.0,
      0.5, 0.0
   };
+
+  float * track;
+  int trackLength;
+  uint64_t trackedParticle;
+
+  GLuint trackShader, trackVAO, trackVBO;
 
   void initialiseGL();
 

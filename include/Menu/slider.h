@@ -24,11 +24,13 @@ public:
 
   float getPosition(){return position;}
 
-  float setPosition(float p){
+  void setPosition(float p){
     if(p>1){position=1;}
     else if (p<0){position=0;}
     else{position=p;}
   }
+
+  void setLabel(std::string s){label=s;}
 
   bool clicked(float x, float y);
   void drag(float x, float y);

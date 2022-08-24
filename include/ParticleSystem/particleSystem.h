@@ -2,21 +2,12 @@
 #define PARTICLE_SYSTEM_H
 
 const uint64_t NULL_INDEX = uint64_t(-1);
-const int ARPERIOD = 60;
-const float attractionStrength = 0.01;
-const float repellingStrength = 0.02;
 
 #include <vector>
 #include <time.h>
 #include <math.h>
 #include <random>
 #include <iostream>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#include <shaders.h>
-#include <glUtils.h>
 
 std::default_random_engine generator;
 std::uniform_real_distribution<double> U(0.0,1.0);
@@ -50,6 +41,8 @@ public:
     deltay = Ly / Nc;
 
     shakerDisplacement = 0.0;
+    massRatio = 1.0;
+    radiusRatio = 2.0;
 
     for (int c = 0; c < Nc*Nc; c++){
       cells.push_back(NULL_INDEX);
@@ -80,90 +73,68 @@ public:
     setCoeffientOfRestitution(0.95);
   }
 
+  void applyForce(double fx, double fy);
+
+  void step();
+
+  void addParticle();
+
+  void removeParticle(){removeParticle(size()-1);}
+
+  uint64_t size(){return uint64_t(std::floor(state.size() / 3));}
+
+  // for judging separation, 1 means perfect separation, 0 means random
+  //   particle placement
+  double orderParameter();
+
+  // parameter setters
+
+  void randomiseRadii(double propBig);
+
+  void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; }
+
+  void setShakerPeriod(double p){
+    if (p != shakerPeriod) {shakerTime = shakerTime*p/shakerPeriod;}
+    shakerPeriod = p;
+  }
+
+  void setMassRatio(double mr){
+    if (massRatio != mr){massRatio = mr; changeRatio();}
+  }
+
+  void setRadiusRatio(double rr){
+    if (radiusRatio != rr){radiusRatio = rr; changeRatio();}
+  }
+
+  void changeRatio();
+
+  void setShakerAmplitude(double a){shakerAmplitude = a*radius;}
+
+  // depends on collision time (which should be >> timestep, 10x seems to work)
+  //  and the masses of two colliding particles.
+  void setCoeffientOfRestitution(double c);
+
+  // helper for setting restitution
   double reducedMass(float m1, float m2){
       return 1.0 / (1.0/m1 + 1.0/m2);
   }
 
+  // helper for setting restitution
   double damping(float m1, float m2){
       double meff = reducedMass(m1,m2);
       return 2*meff*(-std::log(coefficientOfRestitution)/collisionTime);
   }
 
+  // helper for setting restitution
   double restoration(float m1, float m2){
       double meff = reducedMass(m1,m2);
       return meff/(collisionTime*collisionTime)*(std::log(coefficientOfRestitution)+M_PI*M_PI);
   }
 
-  void applyForce(double fx, double fy);
-
-  void step();
-
-  void addParticle(){
-    int i = size();
-
-    if (i == nParticles){return;}
-
-    double x = U(generator)*(Lx-2*radius)+radius;
-    double y = U(generator)*(Ly-2*radius)+radius;
-    double theta = U(generator)*2.0*3.14;
-
-    double r = i%2 == 0 ? radius : radius / 2.0;
-    double m = i%2 == 0 ? mass : mass / 4.0;
-
-    addParticle(x,y,theta,r,m);
-  }
-
-  void removeParticle(){removeParticle(size()-1);}
-
-  uint64_t size(){
-    return uint64_t(std::floor(state.size() / 3));
-  }
-
-  double orderParameter();
-
-  void randomiseRadii(double propBig){
-    int nBig = std::floor(propBig*size());
-    int nSmall = size()-nBig;
-    for (int i = 0; i < size(); i++){
-
-      bool coin = U(generator) > 0.5;
-
-      if (nSmall == 0 && nBig > 0){
-        parameters[i*2] = radius;
-        parameters[i*2+1] = mass;
-        nBig--;
-      }
-      else if (nBig > 0 && coin){
-        parameters[i*2] = radius;
-        parameters[i*2+1] = mass;
-        nBig--;
-      }
-      else if (nSmall > 0){
-        parameters[i*2] = radius/2.0;
-        parameters[i*2+1] = mass/4.0;
-        nSmall--;
-      }
-
-      floatState[i*4+3] = parameters[i*2];
-
-    }
-  }
-
-  void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; }
+  // parameter getters
 
   double getshakerPeriod(){return shakerPeriod;}
-  void setShakerPeriod(double p){
-    if (p != shakerPeriod) {shakerTime = shakerTime*p/shakerPeriod;}
-    shakerPeriod = p;
-  }
-  double setShakerAmplitude(double a){
-    shakerAmplitude = a*radius;
-  }
-
-  void setCoeffientOfRestitution(double c);
-  // GL public members
-  void setProjection(glm::mat4 p);
-  void draw(uint64_t frameId, float zoomLevel, float resX, float resY);
+  double getShakerAmplitude(){return shakerAmplitude/radius;}
 
   ~ParticleSystem(){
     free(floatState);
@@ -195,6 +166,9 @@ private:
   double coefficientOfRestitution;
   double collisionTime;
 
+  double massRatio;
+  double radiusRatio;
+
   double dampingSS; // small-small
   double dampingBB; // big-big
   double dampingSB;
@@ -222,69 +196,11 @@ private:
 
   float * floatState;
 
-  void addParticle(double x, double y, double theta, double r, double m){
+  void addParticle(double x, double y, double theta, double r, double m);
 
-    int i = size();
+  void removeParticle(uint64_t i);
 
-    state.push_back(x);
-    state.push_back(y);
-    state.push_back(theta);
-
-    floatState[i*4] = x;
-    floatState[i*4+1] = y;
-    floatState[i*4+2] = theta;
-    floatState[i*4+3] = r;
-
-    lastState.push_back(x);
-    lastState.push_back(y);
-    lastState.push_back(theta);
-
-    parameters.push_back(r);
-    parameters.push_back(m);
-
-    forces.push_back(0.0);
-    forces.push_back(0.0);
-
-    velocities.push_back(0.0);
-    velocities.push_back(0.0);
-
-    noise.push_back(0.0);
-    noise.push_back(0.0);
-  }
-
-  void removeParticle(uint64_t i){
-    if (state.size() >= 3*i){
-      state.erase(
-        state.begin()+3*i,
-        state.begin()+3*i+3
-      );
-
-      lastState.erase(
-        lastState.begin()+3*i,
-        lastState.begin()+3*i+3
-      );
-
-      parameters.erase(
-        parameters.begin()+2*i,
-        parameters.begin()+2*i+2
-      );
-
-      forces.erase(
-        forces.begin()+2*i,
-        forces.begin()+2*i+2
-      );
-
-      velocities.erase(
-        velocities.begin()+2*i,
-        velocities.begin()+2*i+2
-      );
-
-      noise.erase(
-        noise.begin()+2*i,
-        noise.begin()+2*i+2
-      );
-    }
-  }
+  // Cell Linked List Collisions detection
 
   void resetLists();
   void insert(uint64_t next, uint64_t particle);
@@ -298,9 +214,14 @@ private:
   );
 
   uint64_t hash(uint64_t particle){
-    return uint64_t(floor(state[particle*3]/deltax))*Nc + uint64_t(floor(state[particle*3+1]/deltay));
+    uint64_t h = uint64_t(floor(state[particle*3]/deltax))*Nc + uint64_t(floor(state[particle*3+1]/deltay));
+    if (h < 0 || h > Nc*Nc){return 0;}
+    return h;
   }
 
+  // integrator requires current and last positions
+  //  changing the timestep can introduce instability if
+  //  not accounted for
   void newTimeStepStates(double oldDt, double newDt);
 };
 

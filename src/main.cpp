@@ -112,25 +112,37 @@ int main(){
 
   glViewport(0,0,resX,resY);
 
-  Slider amplitudeSlider(resX-256.0,resY-64.0,128.0,16.0,"Shaker Amplitude");
+  // sliders are not beautifully handeled, should really have
+  //  a widget hierachy system, but won't bother for this
+  //  app
+
+  Slider amplitudeSlider(resX-300.0,resY-64.0,128.0,16.0,"Shaker Amplitude");
   amplitudeSlider.setPosition(0.5);
   amplitudeSlider.setProjection(textProj);
 
-  Slider shakerSlider(resX-256.0,resY-64.0*2,128.0,16.0,"Shaker Period");
+  Slider shakerSlider(resX-300.0,resY-64.0*2,128.0,16.0,"Shaker Period");
   shakerSlider.setPosition(0.5);
   shakerSlider.setProjection(textProj);
 
-  Slider particlesSlider(resX-256.0,resY-64.0*3,128.0,16.0,"Particles");
+  Slider particlesSlider(resX-300.0,resY-64.0*3,128.0,16.0,"Particles");
   particlesSlider.setPosition(0.5);
   particlesSlider.setProjection(textProj);
 
-  Slider proportionBigSlider(resX-256.0,resY-64.0*4,128.0,16.0,"Proportion Big");
+  Slider proportionBigSlider(resX-300.0,resY-64.0*4,128.0,16.0,"Proportion Big");
   proportionBigSlider.setPosition(0.5);
   proportionBigSlider.setProjection(textProj);
 
-  Slider restitutionSlider(resX-256.0,resY-64.0*5,128.0,16.0,"Coef. Restitution");
+  Slider restitutionSlider(resX-300.0,resY-64.0*5,128.0,16.0,"Coef. Restitution");
   restitutionSlider.setPosition(0.5);
   restitutionSlider.setProjection(textProj);
+
+  Slider massRatioSlider(resX-300.0,resY-64.0*6,128.0,16.0,"Mass Ratio");
+  massRatioSlider.setPosition(0.5);
+  massRatioSlider.setProjection(textProj);
+
+  Slider radiusRatioSlider(resX-300.0,resY-64.0*7,128.0,16.0,"Size Ratio");
+  radiusRatioSlider.setPosition(0.5);
+  radiusRatioSlider.setProjection(textProj);
 
   double oldMouseX = 0.0;
   double oldMouseY = 0.0;
@@ -145,6 +157,8 @@ int main(){
   double shakerMaxPeriod = 1.0;
   double propBig = 0.5;
   double maxAmplitude = 10.0; // measured in particle radius units!
+  double maxMassRatio = 2.0;
+  double maxRadiusRatio = 4.0;
 
   while (window.isOpen()){
 
@@ -209,6 +223,8 @@ int main(){
         proportionBigSlider.clicked(pos.x,resY-pos.y);
         restitutionSlider.clicked(pos.x,resY-pos.y);
         amplitudeSlider.clicked(pos.x,resY-pos.y);
+        massRatioSlider.clicked(pos.x,resY-pos.y);
+        radiusRatioSlider.clicked(pos.x,resY-pos.y);
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
 
@@ -223,6 +239,8 @@ int main(){
         proportionBigSlider.drag(pos.x,resY-pos.y);
         restitutionSlider.drag(pos.x,resY-pos.y);
         amplitudeSlider.drag(pos.x,resY-pos.y);
+        massRatioSlider.drag(pos.x,resY-pos.y);
+        radiusRatioSlider.drag(pos.x,resY-pos.y);
       }
 
       if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left){
@@ -233,6 +251,8 @@ int main(){
         proportionBigSlider.mouseUp();
         restitutionSlider.mouseUp();
         amplitudeSlider.mouseUp();
+        massRatioSlider.mouseUp();
+        radiusRatioSlider.mouseUp();
       }
 
     }
@@ -246,6 +266,7 @@ int main(){
     if (!pause){
 
       int n = std::floor(particlesSlider.getPosition()*float(N));
+      particlesSlider.setLabel("Particles: "+fixedLengthNumber(n,4));
       if (n < particles.size()){
         while (n < particles.size()){
           particles.removeParticle();
@@ -260,16 +281,32 @@ int main(){
       }
 
       double val = proportionBigSlider.getPosition();
+      proportionBigSlider.setLabel("Prop. Big: "+fixedLengthNumber(val,4));
 
       if (val != propBig){
         particles.randomiseRadii(val);
         propBig = val;
       }
 
-      particles.setShakerPeriod(std::max(0.005,double(shakerSlider.getPosition())*shakerMaxPeriod));
-      particles.setShakerAmplitude(amplitudeSlider.getPosition()*maxAmplitude);
-      particles.setCoeffientOfRestitution(std::min(std::max(0.1,double(restitutionSlider.getPosition())),0.98));
+      val = std::max(0.1,massRatioSlider.getPosition()*maxMassRatio);
+      particles.setMassRatio(val);
+      massRatioSlider.setLabel("Mass Ratio: "+fixedLengthNumber(val,4));
 
+      val = std::max(1.0,radiusRatioSlider.getPosition()*maxRadiusRatio);
+      particles.setRadiusRatio(val);
+      radiusRatioSlider.setLabel("Size Ratio: "+fixedLengthNumber(val,4));
+
+      val = std::max(0.005,double(shakerSlider.getPosition())*shakerMaxPeriod);
+      particles.setShakerPeriod(val);
+      shakerSlider.setLabel("Shaker Period: "+fixedLengthNumber(val,5));
+
+      val = amplitudeSlider.getPosition()*maxAmplitude;
+      particles.setShakerAmplitude(val);
+      amplitudeSlider.setLabel("Shaker Amplitude: "+fixedLengthNumber(val,4));
+
+      val = std::min(std::max(0.1,double(restitutionSlider.getPosition())),0.98);
+      particles.setCoeffientOfRestitution(val);
+      restitutionSlider.setLabel("Coef. Restitution: "+fixedLengthNumber(val,4));
       particles.setTimeStep(dt*speed);
 
 
@@ -354,6 +391,16 @@ int main(){
     );
 
     amplitudeSlider.draw(
+      textRenderer,
+      OD
+    );
+
+    radiusRatioSlider.draw(
+      textRenderer,
+      OD
+    );
+
+    massRatioSlider.draw(
       textRenderer,
       OD
     );

@@ -6,3 +6,5 @@ Makefile
 CMakeCache.txt
 *.ipynb
 .ipynb_checkpoints
+phase
+Jerboa

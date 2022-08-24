@@ -28,5 +28,7 @@ add_executable(Jerboa src/main.cpp)
 
 target_link_libraries(Jerboa sfml-system sfml-window sfml-graphics sfml-audio X11 ${FREETYPE_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
 
+find_package(MPI)
+include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 add_executable(phase src/phase.cpp)
-target_link_libraries(phase ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(phase ${MPI_C_LIBRARIES})

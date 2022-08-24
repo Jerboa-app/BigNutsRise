@@ -360,3 +360,127 @@ void ParticleSystem::step(){
   double updates = (clock()-tic)/double(CLOCKS_PER_SEC);
   tic = clock();
 }
+
+void ParticleSystem::addParticle(){
+  int i = size();
+
+  if (i == nParticles){return;}
+
+  double x = U(generator)*(Lx-2*radius)+radius;
+  double y = U(generator)*(Ly-2*radius)+radius;
+  double theta = U(generator)*2.0*3.14;
+
+  double r = i%2 == 0 ? radius : radius / radiusRatio;
+  double m = i%2 == 0 ? mass : mass / massRatio;
+
+  addParticle(x,y,theta,r,m);
+}
+
+void ParticleSystem::randomiseRadii(double propBig){
+  int nBig = std::floor(propBig*size());
+  int nSmall = size()-nBig;
+  for (int i = 0; i < size(); i++){
+
+    bool coin = U(generator) > 0.5;
+
+    if (nSmall == 0 && nBig > 0){
+      parameters[i*2] = radius;
+      parameters[i*2+1] = mass;
+      nBig--;
+    }
+    else if (nBig > 0 && coin){
+      parameters[i*2] = radius;
+      parameters[i*2+1] = mass;
+      nBig--;
+    }
+    else if (nSmall > 0){
+      parameters[i*2] = radius/radiusRatio;
+      parameters[i*2+1] = mass/massRatio;
+      nSmall--;
+    }
+
+    floatState[i*4+3] = parameters[i*2];
+
+  }
+}
+
+void ParticleSystem::changeRatio(){
+  std::cout << massRatio << ", " << radiusRatio << "\n";
+  for (int i = 0; i < size(); i++){
+    if (parameters[i*2+1] != mass){
+      parameters[i*2+1] = mass / massRatio;
+      parameters[i*2] = radius / radiusRatio;
+    }
+    floatState[i*4+3] = parameters[i*2];
+  }
+}
+
+void ParticleSystem::addParticle(
+  double x,
+  double y,
+  double theta,
+  double r,
+  double m
+){
+
+  int i = size();
+
+  state.push_back(x);
+  state.push_back(y);
+  state.push_back(theta);
+
+  floatState[i*4] = x;
+  floatState[i*4+1] = y;
+  floatState[i*4+2] = theta;
+  floatState[i*4+3] = r;
+
+  lastState.push_back(x);
+  lastState.push_back(y);
+  lastState.push_back(theta);
+
+  parameters.push_back(r);
+  parameters.push_back(m);
+
+  forces.push_back(0.0);
+  forces.push_back(0.0);
+
+  velocities.push_back(0.0);
+  velocities.push_back(0.0);
+
+  noise.push_back(0.0);
+  noise.push_back(0.0);
+}
+
+void ParticleSystem::removeParticle(uint64_t i){
+  if (state.size() >= 3*i){
+    state.erase(
+      state.begin()+3*i,
+      state.begin()+3*i+3
+    );
+
+    lastState.erase(
+      lastState.begin()+3*i,
+      lastState.begin()+3*i+3
+    );
+
+    parameters.erase(
+      parameters.begin()+2*i,
+      parameters.begin()+2*i+2
+    );
+
+    forces.erase(
+      forces.begin()+2*i,
+      forces.begin()+2*i+2
+    );
+
+    velocities.erase(
+      velocities.begin()+2*i,
+      velocities.begin()+2*i+2
+    );
+
+    noise.erase(
+      noise.begin()+2*i,
+      noise.begin()+2*i+2
+    );
+  }
+}

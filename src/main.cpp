@@ -28,8 +28,8 @@
 #include <math.h>
 #include <vector>
 
-const int resX = 720;
-const int resY = 720;
+const int resX = 1000;
+const int resY = 1000;
 
 const int subSamples = 40;
 const float dt = (1.0 / 60.0) / subSamples;

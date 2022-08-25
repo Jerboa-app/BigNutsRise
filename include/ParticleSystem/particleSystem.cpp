@@ -68,6 +68,10 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
 
     mag = -damping*ddot-restoration*std::pow(d,beta);
 
+    // Coefficient of restitution and linear–dashpot model revisited
+    //  Thomas Schwager · Thorsten Pösche
+    mag = std::min(0.0,mag);
+
     fx = mag*nx;
     fy = mag*ny;
 
@@ -320,7 +324,7 @@ void ParticleSystem::step(){
       flag = true;
     }
 
-    if (state[i*3+1]-parameters[2*i] < 0 || state[i*3+1]+parameters[2*i] > Ly){
+    if (state[i*3+1]+parameters[2*i] > Ly){
       uy = -0.5*vy;
       if (flag){
         ang = std::atan2(uy,ux);

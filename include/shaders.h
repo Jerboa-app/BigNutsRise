@@ -66,6 +66,22 @@ const char * sliderFragmentShader = "#version 330 core\n"
     "else {colour = frameColour;}"
   "}";
 
+const char * buttonVertexShader = "#version 330 core\n"
+  "layout(location=0) in vec2 a_position;\n"
+  "uniform mat4 proj;\n"
+  "void main(){\n"
+  " gl_Position = proj*vec4(a_position.xy,0.0,1.0);\n"
+  "}";
+
+const char * buttonFragmentShader = "#version 330 core\n"
+  "uniform vec4 frameColour; uniform vec4 fillColour;\n"
+  "uniform int state;\n"
+  "out vec4 colour;\n"
+  "void main(){"
+    "if (state == 1){colour=fillColour;}"
+    "else {colour = frameColour;}"
+  "}";
+
 
 // basic particle shader
 // cmap(t) defines a periodic RGB colour map for t \in [0,1] using cubic

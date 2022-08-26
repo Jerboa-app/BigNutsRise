@@ -20,6 +20,7 @@
 #include <Text/textRenderer.cpp>
 #include <Text/popup.cpp>
 
+#include <Menu/button.cpp>
 #include <Menu/slider.cpp>
 
 #include <time.h>
@@ -53,7 +54,7 @@ void speedPopUp(Popup & popups){
       "Speed: "+pos+" %",
       3.0,
       resX-256.,
-      resY-64*8,
+      resY-64*9,
       glm::vec3(0.0,0.0,0.0),
       "speed"
     )
@@ -146,6 +147,10 @@ int main(){
   radiusRatioSlider.setPosition(0.5);
   radiusRatioSlider.setProjection(textProj);
 
+  Button oneBigOnBottomButton(resX-300.0,resY-64.0*8,16.0,16.0,"One Big");
+  oneBigOnBottomButton.setState(false);
+  oneBigOnBottomButton.setProjection(textProj);
+
   double oldMouseX = 0.0;
   double oldMouseY = 0.0;
 
@@ -163,7 +168,6 @@ int main(){
   double maxRadiusRatio = 4.0;
 
   while (window.isOpen()){
-
 
     sf::Event event;
     while (window.pollEvent(event)){
@@ -220,6 +224,8 @@ int main(){
 
       if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left){
         sf::Vector2i pos = sf::Mouse::getPosition(window);
+
+        // horrible sliders, should have hierachy + drawable class
         bool c = shakerSlider.clicked(pos.x,resY-pos.y);
         particlesSlider.clicked(pos.x,resY-pos.y);
         proportionBigSlider.clicked(pos.x,resY-pos.y);
@@ -227,6 +233,10 @@ int main(){
         amplitudeSlider.clicked(pos.x,resY-pos.y);
         massRatioSlider.clicked(pos.x,resY-pos.y);
         radiusRatioSlider.clicked(pos.x,resY-pos.y);
+
+        // buttons
+        oneBigOnBottomButton.clicked(pos.x,resY-pos.y);
+
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
 
@@ -267,53 +277,71 @@ int main(){
 
     physClock.restart();
 
-    if (!pause){
+    if (oneBigOnBottomButton.getState()){
 
-      // now for some very inelegant slider logic!
-      int n = std::floor(particlesSlider.getPosition()*float(N));
-      particlesSlider.setLabel("Particles: "+fixedLengthNumber(n,4));
-      if (n < particles.size()){
-        while (n < particles.size()){
-          particles.removeParticle();
-        }
-      }
-      else if (n > particles.size()){
-        int i = particles.size()-1;
-        while (i < n){
+      if (particles.size() < N){
+        while (particles.size() < N){
           particles.addParticle();
-          i++;
         }
       }
 
-      double val = proportionBigSlider.getPosition();
-      proportionBigSlider.setLabel("Prop. Big: "+fixedLengthNumber(val,4));
+      particles.oneBigOnBottom();
+      pause = true;
+      particlesSlider.setPosition(1.0);
+      amplitudeSlider.setPosition(0.0);
+      shakerSlider.setPosition(1.0);
+      propBig = 1.0f/float(N);
+      proportionBigSlider.setPosition(propBig);
 
-      if (val != propBig){
-        particles.randomiseRadii(val);
-        propBig = val;
+      oneBigOnBottomButton.setState(false);
+    }
+
+    // now for some very inelegant slider logic!
+    int n = std::floor(particlesSlider.getPosition()*float(N));
+    particlesSlider.setLabel("Particles: "+fixedLengthNumber(n,4));
+    if (n < particles.size()){
+      while (n < particles.size()){
+        particles.removeParticle();
       }
+    }
+    else if (n > particles.size()){
+      int i = particles.size()-1;
+      while (i < n){
+        particles.addParticle();
+        i++;
+      }
+    }
 
-      val = std::max(0.1,massRatioSlider.getPosition()*maxMassRatio);
-      particles.setMassRatio(val);
-      massRatioSlider.setLabel("Mass Ratio: "+fixedLengthNumber(val,4));
+    double val = proportionBigSlider.getPosition();
+    proportionBigSlider.setLabel("Prop. Big: "+fixedLengthNumber(val,4));
 
-      val = std::max(1.0,radiusRatioSlider.getPosition()*maxRadiusRatio);
-      particles.setRadiusRatio(val);
-      radiusRatioSlider.setLabel("Size Ratio: "+fixedLengthNumber(val,4));
+    if (val != propBig){
+      particles.randomiseRadii(val);
+      propBig = val;
+    }
 
-      val = std::max(0.005,double(shakerSlider.getPosition())*shakerMaxPeriod);
-      particles.setShakerPeriod(val);
-      shakerSlider.setLabel("Shaker Period: "+fixedLengthNumber(val,5));
+    val = std::max(0.1,massRatioSlider.getPosition()*maxMassRatio);
+    particles.setMassRatio(val);
+    massRatioSlider.setLabel("Mass Ratio: "+fixedLengthNumber(val,4));
 
-      val = amplitudeSlider.getPosition()*maxAmplitude;
-      particles.setShakerAmplitude(val);
-      amplitudeSlider.setLabel("Shaker Amplitude: "+fixedLengthNumber(val,4));
+    val = std::max(1.0,radiusRatioSlider.getPosition()*maxRadiusRatio);
+    particles.setRadiusRatio(val);
+    radiusRatioSlider.setLabel("Size Ratio: "+fixedLengthNumber(val,4));
 
-      val = std::min(std::max(0.1,double(restitutionSlider.getPosition())),0.98);
-      particles.setCoeffientOfRestitution(val);
-      restitutionSlider.setLabel("Coef. Restitution: "+fixedLengthNumber(val,4));
-      particles.setTimeStep(dt*speed);
+    val = std::max(0.005,double(shakerSlider.getPosition())*shakerMaxPeriod);
+    particles.setShakerPeriod(val);
+    shakerSlider.setLabel("Shaker Period: "+fixedLengthNumber(val,5));
 
+    val = amplitudeSlider.getPosition()*maxAmplitude;
+    particles.setShakerAmplitude(val);
+    amplitudeSlider.setLabel("Shaker Amplitude: "+fixedLengthNumber(val,4));
+
+    val = std::min(std::max(0.1,double(restitutionSlider.getPosition())),0.98);
+    particles.setCoeffientOfRestitution(val);
+    restitutionSlider.setLabel("Coef. Restitution: "+fixedLengthNumber(val,4));
+    particles.setTimeStep(dt*speed);
+
+    if (!pause){
       for (int s = 0; s < subSamples; s++){
         particles.step();
         pRender.updatedTrack(particles);
@@ -407,6 +435,11 @@ int main(){
     );
 
     massRatioSlider.draw(
+      textRenderer,
+      OD
+    );
+
+    oneBigOnBottomButton.draw(
       textRenderer,
       OD
     );

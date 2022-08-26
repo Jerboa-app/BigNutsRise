@@ -31,7 +31,7 @@ public:
   : nParticles(N), radius(std::sqrt(density/(N*M_PI))),speed(0),drag(0),
     rotationalDrag(.01),mass(1.0), momentOfInertia(0.01),
     rotationalDiffusion(0.01),dt(dt),collisionTime(10*dt),
-    alpha(0.0),beta(1.0),shakerPeriod(1.0),shakerAmplitude(radius),shakerTime(0.0),
+    shakerPeriod(1.0),shakerAmplitude(radius),shakerTime(0.0),
     Lx(Lx), Ly(Ly)
   {
 

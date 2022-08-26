@@ -33,11 +33,11 @@ void ParticleSystem::populateLists(
 
 void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
   if (i == j){return;}
-  double rx,ry,dd,d,ddot,mag,fx,fy,nx,ny,vx,vy;
+  double rx,ry,dd,d,ddot,mag,fx,fy,nx,ny,vx,vy,damping,restoration,rc;
   rx = state[j*3]-state[i*3];
   ry = state[j*3+1]-state[i*3+1];
   dd = rx*rx+ry*ry;
-  double rc = parameters[i*2]+parameters[j*2];
+  rc = parameters[i*2]+parameters[j*2];
   if (dd < rc*rc){
     d = std::sqrt(dd);
 
@@ -50,8 +50,6 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
     vy = velocities[i*2+1]-velocities[j*2+1];
 
     ddot = vx*nx+vy*ny;
-
-    double damping, restoration;
 
     if (parameters[i*2+1] == mass && parameters[j*2+1] == mass){
       damping = dampingBB; restoration = restorationBB;
@@ -66,7 +64,7 @@ void ParticleSystem::handleCollision(uint64_t i, uint64_t j){
       damping = dampingSS; restoration = restorationSS;
     }
 
-    mag = -damping*ddot-restoration*std::pow(d,beta);
+    mag = -damping*ddot-restoration*d;
 
     // Coefficient of restitution and linear–dashpot model revisited
     //  Thomas Schwager · Thorsten Pösche
@@ -99,8 +97,10 @@ void ParticleSystem::cellCollisions(
     return;
   }
 
+  int a2NcPlusb2 = a2*Nc+b2;
+
   while (p1 != NULL_INDEX){
-    p2 = cells[a2*Nc+b2];
+    p2 = cells[a2NcPlusb2];
     while(p2 != NULL_INDEX){
         handleCollision(p1,p2);
         p2 = list[p2];
@@ -225,13 +225,7 @@ void ParticleSystem::step(){
   double br = 1.0 / (1.0 + cr);
   double ar = (1.0-cr)*br;
 
-  //std::cout << shakerPeriod << "\n";
-  //shakerDisplacement += shakerAmplitude*2.0*M_PI/shakerPeriod * std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
   shakerDisplacement += (2.0*M_PI/shakerPeriod)*shakerAmplitude*std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
-
-  double xShakerAmplitude = 0.05*shakerAmplitude;
-  double xShakerPeriod = 0.1*shakerPeriod;
-  //double xShakerDisplacement += (2.0*M_PI/xShakerPeriod)*xShakerAmplitude*std::sin(2.0*M_PI*shakerTime/(xShakerPeriod))*dt;
 
   for (int i = 0; i < size(); i++){
 
@@ -258,36 +252,6 @@ void ParticleSystem::step(){
     double xp = lastState[i*3];
     double yp = lastState[i*3+1];
     double thetap = lastState[i*3+2];
-
-    // d = std::sqrt(dd);
-    //
-    // nx = rx / d;
-    // ny = ry / d;
-    //
-    // d = 2*radius-d;
-    //
-    // vx = velocities[i*2]-velocities[j*2];
-    // vy = velocities[i*2+1]-velocities[j*2+1];
-    //
-    // ddot = vx*nx+vy*ny;
-    //
-    // mag = -damping*ddot*std::pow(d,alpha)-restoration*std::pow(d,beta);
-
-    // if (x - radius <= (xShakerDisplacement + xShakerAmplitude)){
-    //   double mag = restoration*((xShakerDisplacement + xShakerAmplitude)+radius-x);
-    //   double f = std::abs(mag); //- mag*damping*velocities[i*2];
-    //   forces[i*2] += f;
-    //   // little kick, up, or else particles get stuck on the bottom and mash together
-    //   forces[i*2+1] += 0.1*std::abs(f);
-    // }
-    //
-    // if (x + radius >= Lx+xShakerDisplacement-xShakerAmplitude){
-    //   double mag = restoration*(x+radius-(Lx+xShakerDisplacement-xShakerAmplitude));
-    //   double f = -std::abs(mag);// + mag*damping*velocities[i*2];
-    //   forces[i*2] += f;
-    //   // little kick, up, or else particles get stuck on the bottom and mash together
-    //   forces[i*2+1] += 0.1*std::abs(f);
-    // }
 
     if (y - parameters[2*i] <= (shakerDisplacement + shakerAmplitude)){
       double mag = (shakerDisplacement + shakerAmplitude)+parameters[2*i]-y;
@@ -353,10 +317,6 @@ void ParticleSystem::step(){
       state[i*3+1] = newY+uy;
       state[i*3] = newX+ux;
     }
-
-    if (state[i*3] == Lx){ state[i*3] -= 0.001;}
-    if (state[i*3+1] == Ly){ state[i*3+1] -= 0.001;}
-
   }
 
   for (int i = 0; i < size(); i++){

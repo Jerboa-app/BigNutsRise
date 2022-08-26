@@ -108,7 +108,7 @@ const char * particleFragmentShader = "#version 330 core\n"
   " vec2 c = 2.0*gl_PointCoord-1.0;\n"
   " float d = length(c);\n"
   // bit of simple AA
-  " float alpha = 1.0-smoothstep(0.99,1.01,d);\n"
+  " float alpha = 1.0-smoothstep(0.95,1.05,d);\n"
   " colour = vec4(o_colour.rgb,alpha);\n"
   " if (colour.a == 0.0){discard;}"
   "}";

@@ -341,7 +341,7 @@ void ParticleSystem::addParticle(){
   addParticle(x,y,theta,r,m);
 }
 
-void ParticleSystem::randomiseRadii(double propBig){
+void ParticleSystem::randomise(double propBig){
   int nBig = std::floor(propBig*size());
   int nSmall = size()-nBig;
   for (int i = 0; i < size(); i++){
@@ -369,16 +369,17 @@ void ParticleSystem::randomiseRadii(double propBig){
   }
 }
 
-void ParticleSystem::changeRatio(){
-  std::cout << massRatio << ", " << radiusRatio << "\n";
-  for (int i = 0; i < size(); i++){
-    if (parameters[i*2+1] != mass){
-      parameters[i*2+1] = mass / massRatio;
-      parameters[i*2] = radius / radiusRatio;
-    }
-    floatState[i*4+3] = parameters[i*2];
-  }
-}
+// void ParticleSystem::changeRatio(){
+//   std::cout << massRatio << ", " << radiusRatio << "\n";
+//   for (int i = 0; i < size(); i++){
+//     if (parameters[i*2+1] != mass || parameters[i*2] != radius){
+//       std::cout << i << "\n";
+//       parameters[i*2+1] = mass / massRatio;
+//       parameters[i*2] = radius / radiusRatio;
+//     }
+//     floatState[i*4+3] = parameters[i*2];
+//   }
+// }
 
 void ParticleSystem::addParticle(
   double x,
@@ -463,7 +464,7 @@ void ParticleSystem::oneBigOnBottom(){
   state[0] = Lx/2.0;
   state[1] = 2*radius;
 
-  double r = 2*radius/radiusRatio;
+  double r = 2.0*radius/radiusRatio;
   int n = std::floor(Lx/r);
   int j = 0;
   double y = r+3*radius;

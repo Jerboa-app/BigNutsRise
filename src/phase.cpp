@@ -146,7 +146,7 @@ int main(){
     A = jobs[i].amplitude;
     C = jobs[i].cor;
 
-    particles.randomiseRadii(0.5);
+    particles.randomise(0.5);
     particles.setShakerPeriod(P);
     particles.setShakerAmplitude(A);
     particles.setCoeffientOfRestitution(C);

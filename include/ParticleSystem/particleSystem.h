@@ -91,7 +91,7 @@ public:
 
   // parameter setters
 
-  void randomiseRadii(double propBig);
+  void randomise(double propBig);
 
   void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; dtdt = dt*dt; }
 
@@ -101,11 +101,11 @@ public:
   }
 
   void setMassRatio(double mr){
-    if (massRatio != mr){massRatio = mr; changeRatio();}
+    if (massRatio != mr){massRatio = mr; randomise(0.5);}
   }
 
   void setRadiusRatio(double rr){
-    if (radiusRatio != rr){radiusRatio = rr; changeRatio();}
+    if (radiusRatio != rr){radiusRatio = rr; randomise(0.5);}
   }
 
   void changeRatio();

@@ -147,7 +147,7 @@ int main(){
   radiusRatioSlider.setPosition(0.5);
   radiusRatioSlider.setProjection(textProj);
 
-  Button oneBigOnBottomButton(resX-300.0,resY-64.0*8,16.0,16.0,"One Big",30);
+  Button oneBigOnBottomButton(resX-300.0,resY-64.0*9,16.0,16.0,"One Big",30);
   oneBigOnBottomButton.setState(false);
   oneBigOnBottomButton.setProjection(textProj);
 
@@ -316,15 +316,15 @@ int main(){
     proportionBigSlider.setLabel("Prop. Big: "+fixedLengthNumber(val,4));
 
     if (val != propBig){
-      particles.randomiseRadii(val);
+      particles.randomise(val);
       propBig = val;
     }
 
-    val = std::max(0.1,massRatioSlider.getPosition()*maxMassRatio);
+    val = 1.0+massRatioSlider.getPosition()*maxMassRatio;
     particles.setMassRatio(val);
     massRatioSlider.setLabel("Mass Ratio: "+fixedLengthNumber(val,4));
 
-    val = std::max(1.0,radiusRatioSlider.getPosition()*maxRadiusRatio);
+    val = 1.0+radiusRatioSlider.getPosition()*maxRadiusRatio;
     particles.setRadiusRatio(val);
     radiusRatioSlider.setLabel("Size Ratio: "+fixedLengthNumber(val,4));
 

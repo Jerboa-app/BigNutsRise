@@ -32,7 +32,7 @@
 const int resX = 1000;
 const int resY = 1000;
 
-const int subSamples = 40;
+const int subSamples = 60;
 const float dt = (1.0 / 60.0) / subSamples;
 
 const int N = 1024;

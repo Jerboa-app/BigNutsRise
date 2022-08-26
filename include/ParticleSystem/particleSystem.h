@@ -8,6 +8,7 @@ const uint64_t NULL_INDEX = uint64_t(-1);
 #include <math.h>
 #include <random>
 #include <iostream>
+#include <thread>
 
 std::default_random_engine generator;
 std::uniform_real_distribution<double> U(0.0,1.0);
@@ -41,7 +42,7 @@ public:
     deltax = Lx / Nc;
     deltay = Ly / Nc;
 
-    shakerDisplacement = 0.0;
+    shakerDisplacement = shakerAmplitude/2.0;
     massRatio = 1.0;
     radiusRatio = 2.0;
 
@@ -111,7 +112,7 @@ public:
 
   void setShakerAmplitude(double a){
     if (shakerAmplitude != a*radius){
-      shakerAmplitude = a*radius; shakerDisplacement = 0.0;
+      shakerAmplitude = a*radius; shakerDisplacement = shakerAmplitude/2.0;
     }
   }
 

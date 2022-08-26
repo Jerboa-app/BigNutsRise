@@ -173,11 +173,11 @@ void ParticleSystem::setCoeffientOfRestitution(double c){
   dampingBB = damping(mass,mass);
   restorationBB = restoration(mass,mass);
 
-  dampingSS = damping(mass/4.0,mass/4.0);
-  restorationSS = restoration(mass/4.0,mass/4.0);
+  dampingSS = damping(mass/massRatio,mass/massRatio);
+  restorationSS = restoration(mass/massRatio,mass/massRatio);
 
-  dampingSB = damping(mass,mass/4.0);
-  restorationSB = restoration(mass,mass/4.0);
+  dampingSB = damping(mass,mass/massRatio);
+  restorationSB = restoration(mass,mass/massRatio);
 }
 
 void ParticleSystem::newTimeStepStates(double oldDt, double newDt){
@@ -221,10 +221,11 @@ void ParticleSystem::step(){
 
   //std::cout << shakerPeriod << "\n";
   //shakerDisplacement += shakerAmplitude*2.0*M_PI/shakerPeriod * std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
-  shakerDisplacement = shakerAmplitude*std::cos(2.0*M_PI*shakerTime/shakerPeriod);
+  shakerDisplacement += (2.0*M_PI/shakerPeriod)*shakerAmplitude*std::sin(2.0*M_PI*shakerTime/shakerPeriod)*dt;
+
   double xShakerAmplitude = 0.05*shakerAmplitude;
   double xShakerPeriod = 0.1*shakerPeriod;
-  double xShakerDisplacement = xShakerAmplitude*std::cos(2.0*M_PI*shakerTime/(xShakerPeriod));
+  //double xShakerDisplacement += (2.0*M_PI/xShakerPeriod)*xShakerAmplitude*std::sin(2.0*M_PI*shakerTime/(xShakerPeriod))*dt;
 
   for (int i = 0; i < size(); i++){
 
@@ -487,4 +488,47 @@ void ParticleSystem::removeParticle(uint64_t i){
       noise.begin()+2*i+2
     );
   }
+}
+
+void ParticleSystem::oneBigOnBottom(){
+  parameters[0] = radius;
+  parameters[1] = mass;
+  floatState[0*4+3] = radius;
+  for (int i = 1; i < size(); i++){
+    parameters[i*2] = radius/radiusRatio;
+    parameters[i*2+1] = mass/massRatio;
+    floatState[i*4+3] = parameters[i*2];
+  }
+
+  state[0] = Lx/2.0;
+  state[1] = 2*radius;
+
+  double r = 2*radius/radiusRatio;
+  int n = std::floor(Lx/r);
+  int j = 0;
+  double y = r+3*radius;
+  for (int i = 1; i < size(); i++){
+    if (j < n){
+      state[i*3] = j*r+radius;
+      state[i*3+1] = y;
+      j++;
+    }
+    else{
+      j = 0;
+      y += r*1.1;
+      state[i*3] = j*r+radius;
+      state[i*3+1] = y;
+    }
+  }
+
+  for (int i = 0; i < size(); i++){
+    lastState[i*3] = state[i*3];
+    lastState[i*3+1] = state[i*3+1];
+    floatState[i*4] = state[i*3];
+    floatState[i*4+1] = state[i*3+1];
+  }
+
+  shakerDisplacement = 0.0;
+  shakerPeriod = 1.0;
+  shakerAmplitude = 0.0;
 }

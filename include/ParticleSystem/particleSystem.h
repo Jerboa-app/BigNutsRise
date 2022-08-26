@@ -16,6 +16,7 @@ std::normal_distribution<double> normal(0.0,1.0);
 class ParticleSystem{
 
   friend class ParticleSystemRenderer;
+  friend class Scenario;
 
 public:
 
@@ -57,8 +58,8 @@ public:
       double y = U(generator)*(Ly-2*radius)+radius;
       double theta = U(generator)*2.0*3.14;
 
-      double r = i%2 == 0 ? radius : radius / 2.0;
-      double m = i%2 == 0 ? mass : mass / 4.0;
+      double r = i%2 == 0 ? radius : radius / radiusRatio;
+      double m = i%2 == 0 ? mass : mass / massRatio;
 
       addParticle(x,y,theta,r,m);
       uint64_t c = hash(i);
@@ -108,7 +109,11 @@ public:
 
   void changeRatio();
 
-  void setShakerAmplitude(double a){shakerAmplitude = a*radius;}
+  void setShakerAmplitude(double a){
+    if (shakerAmplitude != a*radius){
+      shakerAmplitude = a*radius; shakerDisplacement = 0.0;
+    }
+  }
 
   // depends on collision time (which should be >> timestep, 10x seems to work)
   //  and the masses of two colliding particles.
@@ -135,6 +140,10 @@ public:
 
   double getshakerPeriod(){return shakerPeriod;}
   double getShakerAmplitude(){return shakerAmplitude/radius;}
+
+  // scenarios
+
+  void oneBigOnBottom();
 
   ~ParticleSystem(){
     free(floatState);

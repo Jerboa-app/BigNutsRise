@@ -147,7 +147,7 @@ int main(){
   radiusRatioSlider.setPosition(0.5);
   radiusRatioSlider.setProjection(textProj);
 
-  Button oneBigOnBottomButton(resX-300.0,resY-64.0*8,16.0,16.0,"One Big");
+  Button oneBigOnBottomButton(resX-300.0,resY-64.0*8,16.0,16.0,"One Big",30);
   oneBigOnBottomButton.setState(false);
   oneBigOnBottomButton.setProjection(textProj);
 

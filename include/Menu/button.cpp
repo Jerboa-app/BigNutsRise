@@ -5,6 +5,7 @@ bool Button::clicked(float x, float y){
   if (xPosition <= x && x <= xPosition+width && yPosition <= y && y <= yPosition+height){
     clickX = x; clickY = y;
     set = true;
+    framesSinceClick = 0;
     return true;
   }
   return false;
@@ -58,12 +59,17 @@ void Button::draw(
 
   glUniform4f(
     glGetUniformLocation(buttonShader,"fillColour"),
-    0.0,0.0,1.0,0.33
+    0.0,0.0,1.0,1.0
   );
 
   glUniform1i(
     glGetUniformLocation(buttonShader,"state"),
     int(set)
+  );
+
+  glUniform1f(
+    glGetUniformLocation(buttonShader,"alpha"),
+    std::max(0.0f,1.0f - framesSinceClick/float(feedback))
   );
 
   glBindVertexArray(buttonVAO);
@@ -82,4 +88,8 @@ void Button::draw(
   );
 
   glError("button draw");
+
+  if (framesSinceClick < feedback){
+    framesSinceClick++;
+  }
 }

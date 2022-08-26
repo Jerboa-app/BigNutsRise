@@ -3,10 +3,11 @@
 
 class Button {
 public:
-  Button(float x, float y, float w, float h, std::string l)
+  Button(float x, float y, float w, float h, std::string l, uint8_t f)
   : xPosition(x), yPosition(y), width(w), height(h),
-   label(l)
+   label(l), feedback(f)
   {
+    framesSinceClick = f;
     initialiseGL();
   }
 
@@ -43,6 +44,9 @@ private:
 
   float clickX;
   float clickY;
+
+  uint8_t feedback;
+  uint8_t framesSinceClick;
 
   GLuint buttonShader, buttonVAO, buttonVBO;
 

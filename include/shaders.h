@@ -75,11 +75,10 @@ const char * buttonVertexShader = "#version 330 core\n"
 
 const char * buttonFragmentShader = "#version 330 core\n"
   "uniform vec4 frameColour; uniform vec4 fillColour;\n"
-  "uniform int state;\n"
+  "uniform int state; uniform float alpha;\n"
   "out vec4 colour;\n"
   "void main(){"
-    "if (state == 1){colour=fillColour;}"
-    "else {colour = frameColour;}"
+    "colour=fillColour*alpha+frameColour;\n"
   "}";
 
 

@@ -71,7 +71,7 @@ int main(){
 
   sf::RenderWindow window(
     sf::VideoMode(resX,resY),
-    "Particles",
+    "Big Nuts Rise",
     sf::Style::Close|sf::Style::Titlebar,
     contextSettings
   );

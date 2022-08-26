@@ -93,7 +93,7 @@ public:
 
   void randomiseRadii(double propBig);
 
-  void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; }
+  void setTimeStep(double dt){ if(this->dt!=dt) {newTimeStepStates(this->dt,dt);} this->dt = dt; dtdt = dt*dt; }
 
   void setShakerPeriod(double p){
     if (p != shakerPeriod) {shakerTime = shakerTime*p/shakerPeriod;}
@@ -112,7 +112,7 @@ public:
 
   void setShakerAmplitude(double a){
     if (shakerAmplitude != a*radius){
-      shakerAmplitude = a*radius; shakerDisplacement = shakerAmplitude/2.0;
+      shakerAmplitude = a*radius; shakerDisplacement = shakerAmplitude;
     }
   }
 
@@ -198,6 +198,7 @@ private:
   double mass;
   double momentOfInertia;
   double dt;
+  double dtdt;
 
   double shakerDisplacement;
   double shakerPeriod;

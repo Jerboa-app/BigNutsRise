@@ -9,7 +9,7 @@ public:
 
   Slider(float x, float y, float w, float h, std::string l)
   : xPosition(x), yPosition(y), width(w), height(h),
-  position(0.0), label(l), dragging(false)
+  position(0.0), label(l), dragging(false), smoothChange(false), period(60), rate(0.0), smoothChanging(false)
   {
     initialiseGL();
   }
@@ -36,6 +36,18 @@ public:
   void drag(float x, float y);
   void mouseUp(){dragging = false; clickX = xPosition+position*width;}
 
+  void setSmoothChange(bool b, uint64_t p = 60, float r = 0.0){smoothChange = b; period = p; rate = r;}
+
+  void smoothChangeTo(float to, uint64_t p = 60, float r = 0.0){
+    nextPos = to; 
+    if(nextPos>1){nextPos=1;}
+    else if (nextPos<0){nextPos=0;}
+    smoothChange = true;
+    smoothChanging = true;
+    period = p;
+    rate = r;
+  }
+
 private:
 
   std::string label;
@@ -52,6 +64,13 @@ private:
   float clickX;
   float clickY;
   bool dragging;
+
+  bool smoothChange;
+  bool smoothChanging;
+  uint64_t period;
+  float delta;
+  float nextPos;
+  float rate;
 
   GLuint sliderShader, sliderVAO, sliderVBO;
 

@@ -2,9 +2,19 @@
 
 bool Slider::clicked(float x, float y){
   // assumes axis aligned
+  if (smoothChanging){return false;}
   if (xPosition <= x && x <= xPosition+width && yPosition <= y && y <= yPosition+height){
     clickX = x; clickY = y;
-    setPosition( (x-xPosition)/width );
+    if (!smoothChange){
+      setPosition( (x-xPosition)/width );
+    } 
+    else {
+      nextPos = (x-xPosition)/width; 
+      if(nextPos>1){nextPos=1;}
+      else if (nextPos<0){nextPos=0;}
+      smoothChanging = true;
+      return true;
+    }
     dragging = true;
     return true;
   }
@@ -12,6 +22,7 @@ bool Slider::clicked(float x, float y){
 }
 
 void Slider::drag(float x, float y){
+  if (smoothChanging){return;}
   if (dragging == false){return;}
   // assumes axis aligned
   if (x < xPosition){
@@ -57,6 +68,19 @@ void Slider::draw(
   TextRenderer & text,
   Type & type
 ){
+
+  if (smoothChanging){
+    float delta = nextPos-position;
+    float sgn = delta < 0 ? -1.0 : 1.0;
+    float next = position+sgn*std::exp(std::abs(delta)*rate)/period;
+    if ( (position >= nextPos && next <= nextPos) || (position <= nextPos && next >= nextPos)){
+      smoothChanging = false;
+      position = nextPos;
+    }
+    else{
+      position = next;
+    }
+  }
 
   glUseProgram(sliderShader);
 

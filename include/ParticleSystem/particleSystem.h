@@ -17,7 +17,7 @@ std::normal_distribution<double> normal(0.0,1.0);
 class ParticleSystem{
 
   friend class ParticleSystemRenderer;
-  friend class Scenario;
+  friend class Trajectory;
 
 public:
 
@@ -38,7 +38,7 @@ public:
     floatState = new float [N*4];
 
     generator.seed(seed);
-    Nc = std::ceil(1.0/(4*radius));
+    Nc = std::ceil(1.0/(4.0*radius));
     deltax = Lx / Nc;
     deltay = Ly / Nc;
 
@@ -86,7 +86,7 @@ public:
   uint64_t size(){return uint64_t(std::floor(state.size() / 3));}
 
   // for judging separation, 1 means perfect separation, 0 means random
-  //   particle placement
+  //   particle placement, works 'better' the more particles there are
   double orderParameter();
 
   // parameter setters
@@ -145,6 +145,7 @@ public:
   // scenarios
 
   void oneBigOnBottom();
+  void one();
 
   ~ParticleSystem(){
     free(floatState);

@@ -1,7 +1,13 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <glew.h>
+
+#if WINDOWS
+  #include <glew.c>
+#else
+  #include <glew.h>
+#endif
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -17,6 +23,7 @@
 
 #include <ParticleSystem/particleSystem.cpp>
 #include <ParticleSystem/particleSystemRenderer.cpp>
+#include <ParticleSystem/trajectory.cpp>
 #include <Text/textRenderer.cpp>
 #include <Text/popup.cpp>
 
@@ -34,6 +41,8 @@ const int resY = 1000;
 
 const int subSamples = 60;
 const float dt = (1.0 / 60.0) / subSamples;
+
+const int saveFrequency = 1;
 
 const int N = 1024;
 // motion parameters
@@ -151,6 +160,10 @@ int main(){
   oneBigOnBottomButton.setState(false);
   oneBigOnBottomButton.setProjection(textProj);
 
+  Button newRecording(resX-300.0,resY-65.0*10,16.0,16.0,"Record",30);
+  newRecording.setState(false);
+  newRecording.setProjection(textProj);
+
   double oldMouseX = 0.0;
   double oldMouseY = 0.0;
 
@@ -167,16 +180,39 @@ int main(){
   double maxMassRatio = 2.0;
   double maxRadiusRatio = 4.0;
 
+  bool isRecording = false;
+  Trajectory record;
+
   while (window.isOpen()){
 
     sf::Event event;
     while (window.pollEvent(event)){
+
       if (event.type == sf::Event::Closed){
-        return 0;
+        record.save();
+        window.close();
+      }
+
+      if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::O){
+        particlesSlider.setPosition(1.0/float(N));
+        particles.one();
+        pause = true;
+      }
+
+      if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::L){
+        shakerSlider.smoothChangeTo(0.133,60*5,2.0);
+      }
+
+
+      if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::D){
+        amplitudeSlider.setSmoothChange(true,60*5,2.0);
+        shakerSlider.setSmoothChange(true,60*5,2.0);
+        restitutionSlider.setSmoothChange(true,60*5,2.0);
       }
 
       if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape){
-        return 0;
+        record.save();
+        window.close();
       }
 
       if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F1){
@@ -236,6 +272,7 @@ int main(){
 
         // buttons
         oneBigOnBottomButton.clicked(pos.x,resY-pos.y);
+        newRecording.clicked(pos.x,resY-pos.y);
 
         // multiply by inverse of current projection
         glm::vec4 worldPos = camera.screenToWorld(pos.x,pos.y);
@@ -292,6 +329,10 @@ int main(){
       shakerSlider.setPosition(1.0);
       propBig = 1.0f/float(N);
       proportionBigSlider.setPosition(propBig);
+
+      amplitudeSlider.setPosition(0.46/10.0);
+      shakerSlider.setPosition(1.0);
+      shakerSlider.setSmoothChange(true,60*10,2.0);
 
       oneBigOnBottomButton.setState(false);
     }
@@ -362,6 +403,26 @@ int main(){
       resX,
       resY
     );
+
+    if (newRecording.getState()){
+      record.newFile();
+      isRecording = !isRecording;
+      newRecording.setState(false);
+    }
+
+    record.setSpeed(speed);
+
+    if (frameId % saveFrequency == 0 && isRecording) {record.takeReading(particles);}
+
+    if (isRecording){
+      textRenderer.renderText(
+        OD,
+        "Recording to file:\n    "+record.fileName(),
+        resX-400.0,resY-64.0*11,
+        0.25f,
+        glm::vec3(0.0f,0.0f,0.0f)
+      );
+    }
 
     if (debug){
       double delta = 0.0;
@@ -448,6 +509,11 @@ int main(){
       textRenderer,
       OD,
       clock.getElapsedTime().asSeconds()
+    );
+
+    newRecording.draw(
+      textRenderer,
+      OD
     );
 
     if(pause){

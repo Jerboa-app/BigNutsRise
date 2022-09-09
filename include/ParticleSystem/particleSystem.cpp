@@ -276,7 +276,7 @@ void ParticleSystem::step(){
 
     // kill the particles movement if it's outside the box
     if (state[i*3]-parameters[2*i] < 0 || state[i*3]+parameters[2*i] > Lx){
-      ux = -0.5*vx;
+      ux = -0.9*vx;
       ang = std::atan2(vy,ux);
 
       if (state[i*3]-parameters[2*i] < 0){
@@ -470,14 +470,14 @@ void ParticleSystem::oneBigOnBottom(){
   double y = r+3*radius;
   for (int i = 1; i < size(); i++){
     if (j < n){
-      state[i*3] = j*r+radius;
+      state[i*3] = j*r+radius/2.;
       state[i*3+1] = y;
       j++;
     }
     else{
       j = 0;
       y += r*1.1;
-      state[i*3] = j*r+radius;
+      state[i*3] = j*r+radius/2.;
       state[i*3+1] = y;
     }
   }
@@ -489,7 +489,33 @@ void ParticleSystem::oneBigOnBottom(){
     floatState[i*4+1] = state[i*3+1];
   }
 
-  shakerDisplacement = 0.0;
+  shakerDisplacement = 0;
   shakerPeriod = 1.0;
-  shakerAmplitude = 0.0;
+  shakerAmplitude = 0;
+}
+
+void ParticleSystem::one(){
+
+  while (size() > 0){
+    removeParticle();
+  }
+
+  addParticle();
+
+  parameters[0] = radius;
+  parameters[1] = mass;
+  floatState[0*4+3] = radius;
+
+  state[0] = Lx/2.0;
+  state[1] = 1.0-2*radius;
+
+  lastState[0] = state[0];
+  lastState[0+1] = state[0+1];
+  floatState[0] = state[0];
+  floatState[0+1] = state[0+1];
+
+  shakerDisplacement = 0;
+  shakerPeriod = 1.0;
+  shakerAmplitude = 0;
+  
 }

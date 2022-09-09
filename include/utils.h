@@ -1,6 +1,21 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <exception>
+
+class IOException: public std::exception {
+public:
+    IOException(std::string msg)
+    : msg(msg)
+    {}
+private:
+    virtual const char * what() const throw(){
+        return msg.c_str();
+    }
+    std::string msg;
+};
+
+
 struct Vertex {
 
     Vertex(float x, float y)

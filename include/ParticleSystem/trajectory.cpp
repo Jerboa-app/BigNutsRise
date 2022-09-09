@@ -35,7 +35,7 @@ void Trajectory::save(){
     #if WINDOWS
         // threading needs to be handled differently
         //   apparently
-        job(trajectory);
+        threadedSave(trajectory);
     #else
         std::thread job(&Trajectory::threadedSave,this,this->trajectory);
         job.detach();

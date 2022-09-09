@@ -31,8 +31,16 @@ void Trajectory::takeReading(ParticleSystem & p){
 }
 
 void Trajectory::save(){
-    //std::thread job(&Trajectory::threadedSave,this,this->trajectory);
-    //job.detach();
+
+    #if WINDOWS
+        // threading needs to be handled differently
+        //   apparently
+        job(trajectory);
+    #else
+        std::thread job(&Trajectory::threadedSave,this,this->trajectory);
+        job.detach();
+    #endif
+
 }
 
 void Trajectory::threadedSave(std::vector<std::vector<State>> trajectory){

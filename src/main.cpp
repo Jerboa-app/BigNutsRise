@@ -189,7 +189,7 @@ int main(){
     while (window.pollEvent(event)){
 
       if (event.type == sf::Event::Closed){
-        record.save();
+        if ( isRecording ){record.save();}
         window.close();
       }
 
@@ -211,7 +211,7 @@ int main(){
       }
 
       if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape){
-        record.save();
+        if ( isRecording ){record.save();}
         window.close();
       }
 
